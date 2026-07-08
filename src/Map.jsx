@@ -35,6 +35,12 @@ const orangeIcon = makeIcon('orange')
     // {success: false, message: ...} = search failed
     // {success: true, boardStop, alightSTop, route} = a valid trip
 function Map( { stops, tripResult, routes }) {
+
+  // if tripResult is valid, we store only that route (one element array). else, we store all routes
+  const routesToDraw = (tripResult && tripResult.success)
+    ? routes.filter(route => route.id == tripResult.route.id ) // filters out all routes whose id doesn't match the tripResult's route ID (i.e. every route but one, atm)
+    : routes
+
   return ( //anytime we want to do anything within the map instance, we have to perform that within <MapContainer>, since it uses React Context to give its children access to the map instance
     <MapContainer center={[41.3116, -72.9271]} zoom={15} style={{ height: '500px', width: '100%' }}> 
 
@@ -54,7 +60,7 @@ function Map( { stops, tripResult, routes }) {
         </Marker>
         ))} */}
 
-        {routes.map(route => ( // draws all routes
+        {routesToDraw.map(route => ( // 
           <Polyline // TODO: omit offline routes by default
             key={route.id} // again, dynamically allocated; needs keys to track between renders
             positions={pairUp(route.path)} 
