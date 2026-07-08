@@ -78,5 +78,5 @@ This project is not affiliated with Yale University or Downtowner.
 
 For questions, comments, or concerns, please contact me at:
 
-sadra.aliakbarpour@yale.edu
+sadra.aliakbarpour@yale.edu  
 www.linkedin.com/in/sadraa
