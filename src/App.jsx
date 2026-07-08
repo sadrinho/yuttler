@@ -175,6 +175,7 @@ console.log('5 closest to destination:', closest5)
         <Map 
           stops={stops}
           tripResult={tripResult}
+          routes={routes}
         />
         <button onClick={handleSearch}>Find Route</button>
       </div>
