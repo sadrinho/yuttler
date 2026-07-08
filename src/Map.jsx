@@ -17,17 +17,17 @@ function makeIcon(color) {
 function pairUp(flat)
 {
   const pairs = []
-  for(let i = 0; i < flat.length; i += 2)
+  for(let i = 0; i < flat.length; i += 2) //TODO: handle bad input (null flat or odd length)
   {
     pairs.push([flat[i], flat[i+1]])
   }
   return pairs
 }
 
-const startIcon = makeIcon('green')
-const endIcon = makeIcon('red')
-const boardIcon = makeIcon('blue')
-const alightIcon = makeIcon('orange')
+const greenIcon = makeIcon('green')
+const boardAlightIcon = makeIcon('red')
+const startStopIcon = makeIcon('blue')
+const orangeIcon = makeIcon('orange')
 
 // stops = list of stops
 // tripResult can be
@@ -44,7 +44,7 @@ function Map( { stops, tripResult, routes }) {
         attribution='&copy; OpenStreetMap contributors' // legal requirement. 
       />
 
-      {/* creates pins for each stop */}
+      {/* creates pins for each stop. for debugging purposes
       {stops.map(stop => (
         <Marker // 2 "props"; position formatted in leaflet's preferred [lat, lon]; key is required in React so each stop has unique ID to identify it, since we're creating a dyanmically generated list and #x last render must evaluate to #x this render
         // key isnt really a prop, it's metadata for React's reconciler. it goes to react itself. 
@@ -52,10 +52,10 @@ function Map( { stops, tripResult, routes }) {
             key={stop.id}>
             <Popup>{[stop.name]}</Popup>
         </Marker>
-        ))}
+        ))} */}
 
-        {routes.map(route => (
-          <Polyline
+        {routes.map(route => ( // draws all routes
+          <Polyline // TODO: omit offline routes by default
             key={route.id} // again, dynamically allocated; needs keys to track between renders
             positions={pairUp(route.path)} 
             color={`#${route.color}`} // learned an important lesson after debugging: ' is not the same as ` 
@@ -68,25 +68,25 @@ function Map( { stops, tripResult, routes }) {
             <>
                 <Marker
                     position={[tripResult.startCoords.lat, tripResult.startCoords.lon]}
-                    icon={startIcon}>
+                    icon={startStopIcon}>
                     <Popup>You are here</Popup>
                 </Marker>
 
                 <Marker
                         position={[tripResult.endCoords.lat, tripResult.endCoords.lon]}
-                        icon={endIcon}>
+                        icon={startStopIcon}>
                         <Popup>Destination</Popup> 
                 </Marker>
 
                 <Marker
                         position={[tripResult.boardStop.lat, tripResult.boardStop.lon]}
-                        icon={boardIcon}>
+                        icon={boardAlightIcon}>
                         <Popup>Board at: {tripResult.boardStop.name}</Popup> 
                 </Marker>
 
                 <Marker
                         position={[tripResult.alightStop.lat, tripResult.alightStop.lon]}
-                        icon={alightIcon}>
+                        icon={boardAlightIcon}>
                         <Popup>Get off at: {tripResult.alightStop.name}</Popup> 
                 </Marker>
 

@@ -29,7 +29,7 @@ function ResultsCard({ result }) {
   return (
     <div>
       <p>Walk to <strong>{result.boardStop.name}</strong></p>
-      <p>Board the <strong>{result.route}</strong></p>
+      <p>Board the <strong>{result.route.name}</strong></p>
       <p>Get off at <strong>{result.alightStop.name}</strong></p>
     </div>
   )
