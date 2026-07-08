@@ -138,8 +138,10 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
         if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
           return {
             success: true,
-            boardAt: startStop.name,
-            alightAt: endStop.name, // added a new word to my vocabulary
+            startCoords: { lat: startLat, lon: startLon },
+            endCoords: { lat: endLat, lon: endLon },
+            boardStop: startStop,
+            alightStop: endStop, // added a new word to my vocabulary
             route: route.name
           }
         }

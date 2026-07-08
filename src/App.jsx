@@ -28,9 +28,9 @@ function ResultsCard({ result }) {
 
   return (
     <div>
-      <p>Walk to <strong>{result.boardAt}</strong></p>
+      <p>Walk to <strong>{result.boardStop.name}</strong></p>
       <p>Board the <strong>{result.route}</strong></p>
-      <p>Get off at <strong>{result.alightAt}</strong></p>
+      <p>Get off at <strong>{result.alightStop.name}</strong></p>
     </div>
   )
 }
@@ -161,7 +161,7 @@ console.log('5 closest to destination:', closest5)
         <Autocomplete
           placeholder="Where are you starting from?"
           onSelect={suggestion => {
-            const coords = suggestion.coords || YALE_LANDMARKS[suggestion.name]
+            const coords = suggestion.coords || YALE_LANDMARKS[suggestion.name] // set to former unless falsy, in which case latter
             setStartCoords(coords)
           }}
         />
@@ -174,6 +174,7 @@ console.log('5 closest to destination:', closest5)
         />
         <Map 
           stops={stops}
+          tripResult={tripResult}
         />
         <button onClick={handleSearch}>Find Route</button>
       </div>
