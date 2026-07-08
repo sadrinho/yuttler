@@ -115,9 +115,6 @@ function getDistance(lat1, lon1, lat2, lon2) { // haversine formula. input 2 lat
 }
 
 function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
-  
-  /*const startStop = findNearestStop(startLat, startLon, stops)
-  const endStop = findNearestStop(endLat, endLon, stops)*/
 
   // find the 5 nearest stops to each location
   const startCandidates = getNearestStops(startLat, startLon, stops, 5)
@@ -151,33 +148,6 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
 
   return { success: false, message: "No direct route found" }
 }
-  /*
-  let bestRoute = null 
-  for (const route of routes) { // for every route we have,
-    const startIndex = route.stops.indexOf(startStop.id) // record at what index the startstop occurs
-    const endIndex = route.stops.indexOf(endStop.id) // record at what index the end stop occurs
-
-    if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) { // if the two indexes are in the list (!= -1) in order,
-      bestRoute = route
-      break
-    } // no else yet it seems
-  }
-
-  // C: Step 3: return the result
-  // surely this block is where we add more cases
-  if (!bestRoute) {
-    return { success: false, message: "No direct route found" }
-  }
-
-  return { 
-    // Q: never seen a return statement like this, how does it return these things/how does wherever we called it expect these?
-    // A: this is an object, just like we saw in the .json files earlier. 
-    success: true, 
-    boardAt: startStop.name, 
-    alightAt: endStop.name,
-    route: bestRoute.name
-  }
-}*/
 
 function getNearestStops(lat, lon, stops, count) { // self explanatory
   return [...stops] // ... is the spread operator, meaning "unpack everything about this thing." in this case we made a copy of the array stops

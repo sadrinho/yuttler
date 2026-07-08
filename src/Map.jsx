@@ -30,7 +30,7 @@ const startStopIcon = makeIcon('blue')
 const orangeIcon = makeIcon('orange')
 
 // stops = list of stops
-// tripResult can be
+// tripResult can be:
     // null = nothing searched yet
     // {success: false, message: ...} = search failed
     // {success: true, boardStop, alightSTop, route} = a valid trip
@@ -49,16 +49,6 @@ function Map( { stops, tripResult, routes }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" // map imagery source 
         attribution='&copy; OpenStreetMap contributors' // legal requirement. 
       />
-
-      {/* creates pins for each stop. for debugging purposes
-      {stops.map(stop => (
-        <Marker // 2 "props"; position formatted in leaflet's preferred [lat, lon]; key is required in React so each stop has unique ID to identify it, since we're creating a dyanmically generated list and #x last render must evaluate to #x this render
-        // key isnt really a prop, it's metadata for React's reconciler. it goes to react itself. 
-            position={[stop.lat, stop.lon]} 
-            key={stop.id}>
-            <Popup>{[stop.name]}</Popup>
-        </Marker>
-        ))} */}
 
         {routesToDraw.map(route => ( // 
           <Polyline // TODO: omit offline routes by default
