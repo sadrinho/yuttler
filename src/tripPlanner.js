@@ -142,7 +142,7 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
             endCoords: { lat: endLat, lon: endLon },
             boardStop: startStop,
             alightStop: endStop, // added a new word to my vocabulary
-            route: route.name
+            route: route
           }
         }
       }
