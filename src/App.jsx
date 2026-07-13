@@ -53,32 +53,6 @@ function App() {
     ]).then(([stopsData, routesData]) => { // ordered; stopsData = result[0], routesData = result[1]
       setStops(stopsData)
       setRoutes(routesData)
-
-      const endStop = stopsData.reduce((nearest, stop) => {
-        const d = (stop.lat - 41.3024) ** 2 + (stop.lon - (-72.9348)) ** 2
-        return d < (nearest.lat - 41.3024) ** 2 + (nearest.lon - (-72.9348)) ** 2 ? stop : nearest
-      })
-
-      console.log('Start stop:', startStop)
-      console.log('End stop:', endStop)
-
-      // check if any route contains both
-      routesData.forEach(route => {
-        const hasStart = route.stops.includes(startStop.id)
-        const hasEnd = route.stops.includes(endStop.id)
-        if (hasStart || hasEnd) {
-          console.log(route.name, '| hasStart:', hasStart, '| hasEnd:', hasEnd)
-        }
-      })
-
-      const closest5 = [...stopsData]
-        .map(stop => ({
-          ...stop,
-          distance: (stop.lat - 41.3024) ** 2 + (stop.lon - (-72.9348)) ** 2
-        }))
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, 5)
-
     })
 
   }, []) // [] is the dependency array indicating that specific thing, but sicne it's empty, it runs exactly once
