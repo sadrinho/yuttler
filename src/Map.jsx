@@ -34,12 +34,26 @@ const orangeIcon = makeIcon('orange')
     // null = nothing searched yet
     // {success: false, message: ...} = search failed
     // {success: true, boardStop, alightSTop, route} = a valid trip
-function Map( { stops, tripResult, routes, darkMode }) {
+function Map( { stops, tripResult, routes, darkMode, buses }) {
 
   // if tripResult is valid, we store only that route (one element array). else, we store all routes
   const routesToDraw = (tripResult && tripResult.success && tripResult.boardStop)
     ? routes.filter(route => route.id == tripResult.route.id ) // filters out all routes whose id doesn't match the tripResult's route ID (i.e. every route but one, atm)
     : routes
+
+  const routesById = {}
+  for (const route of routes) {
+    routesById[route.id] = route
+  }
+
+  function makeBusIcon(heading, color) { // creates the icons for the buses, given their headings
+  return L.divIcon({
+    className: 'bus-icon', // for css styling
+    html: `<div style="transform: rotate(${heading}deg); color: ${color}; font-size: 20px;">▲</div>`, 
+    iconSize: [20, 20], 
+    iconAnchor: [10, 10] // anchored at the center
+  })
+}
 
   return ( //anytime we want to do anything within the map instance, we have to perform that within <MapContainer>, since it uses React Context to give its children access to the map instance
     <MapContainer center={[41.3116, -72.9271]} zoom={15} style={{ height: '500px', width: '100%' }}> 
@@ -61,6 +75,24 @@ function Map( { stops, tripResult, routes, darkMode }) {
             color={`#${route.color}`} // learned an important lesson after debugging: ' is not the same as ` 
           />
         ))}
+
+        {buses.map(bus => {
+          const route = routesById[bus.route]
+          const routeColor = `#${route?.color || '888888'}`
+          const routeName = route?.name || 'Unknown'
+          return (
+          <Marker
+            key={bus.id}
+            position={[bus.lat, bus.lon]}
+            icon={makeBusIcon(bus.heading, routeColor)}
+          >
+            <Popup>
+              Bus {bus.name} <br />
+              <span style ={{ color: routeColor }}>{routeName}</span>
+            </Popup>
+          </Marker>
+          )
+        })}
 
         {/* draws the 4 pins denoting your specific route start/stop and bus stops */}
         {tripResult && tripResult.success && ( // order matters incase tripResult = null.
