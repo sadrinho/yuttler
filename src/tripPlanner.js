@@ -1,4 +1,4 @@
-const YALE_LANDMARKS = {
+const YALE_LANDMARKS = { //TODO: fix location coordinates. many are incorrect (oc for certain)
   'beinecke': { lat: 41.3116, lon: -72.9271 },
   'beinecke library': { lat: 41.3116, lon: -72.9271 },
   'yale medical school': { lat: 41.3024, lon: -72.9348 },

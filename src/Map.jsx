@@ -34,7 +34,7 @@ const orangeIcon = makeIcon('orange')
     // null = nothing searched yet
     // {success: false, message: ...} = search failed
     // {success: true, boardStop, alightSTop, route} = a valid trip
-function Map( { stops, tripResult, routes }) {
+function Map( { stops, tripResult, routes, darkMode }) {
 
   // if tripResult is valid, we store only that route (one element array). else, we store all routes
   const routesToDraw = (tripResult && tripResult.success && tripResult.boardStop)
@@ -46,8 +46,12 @@ function Map( { stops, tripResult, routes }) {
 
       {/* creates the map tiles */}
       <TileLayer 
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" // map imagery source 
-        attribution='&copy; OpenStreetMap contributors' // legal requirement. 
+        key={darkMode ? 'dark' : 'light'} // force React to remount on change, safeguard
+        url={darkMode
+          ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" // map imagery source; CARTO's positron
+          // ? "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png" // possible 2nd choice in case Carto's is too dark. requires API key though
+          : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" }
+        attribution='&copy; OpenStreetMap contributors &copy; CARTO' // legal requirement. 
       />
 
         {routesToDraw.map(route => ( // 
