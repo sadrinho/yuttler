@@ -116,9 +116,26 @@ function getDistance(lat1, lon1, lat2, lon2) { // haversine formula. input 2 lat
 
 function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
 
+  // store the direct distance between stops (to check if we should walk instead)
+  const walkDistance = getDistance(startLat, startLon, endLat, endLon);
+
+  if (walkDistance < 400) // 400 meters is a safe minimum for a bus route for now; a bit on the shorter side if anything
+  {
+    return { 
+      success: true,
+      walkOnly: true,
+      startCoords: { lat: startLat, lon: startLon },
+      endCoords: { lat: endLat, lon: endLon },
+      distance: walkDistance
+    }
+  }
+
   // find the 5 nearest stops to each location
   const startCandidates = getNearestStops(startLat, startLon, stops, 5)
   const endCandidates = getNearestStops(endLat, endLon, stops, 5)
+
+
+
 
   // "In the right order" means that since the list of stops in a given route doesn't "jump" at the end i.e. the bus
   //    doesn't just teleport to the starting stop after it finishes the last stop, we want to make sure we
