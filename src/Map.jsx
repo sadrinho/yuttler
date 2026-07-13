@@ -74,7 +74,7 @@ function Map( { stops, tripResult, routes }) {
                         <Popup>Destination</Popup> 
                 </Marker>
 
-                {tripResult.boardstop && ( // excludes walkOnly case
+                {tripResult.boardStop && ( // excludes walkOnly case
                     <>
                     <Marker
                             position={[tripResult.boardStop.lat, tripResult.boardStop.lon]}
