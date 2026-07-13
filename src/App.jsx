@@ -100,9 +100,7 @@ function App() {
           }}
         />
 
-        <button onClick={() => setDarkMode(!darkMode)}> 
-          {darkMode ? 'Toggle Light Mode' : 'Toggle Dark Mode'}
-        </button>
+        <button onClick={handleSearch}>Find Route</button>
 
         <Map
           stops={stops}
@@ -110,7 +108,11 @@ function App() {
           routes={routes}
           darkMode = {darkMode}
         />
-        <button onClick={handleSearch}>Find Route</button>
+
+        <button onClick={() => setDarkMode(!darkMode)}> 
+          {darkMode ? 'Toggle Light Mode' : 'Toggle Dark Mode'}
+        </button>
+
       </div>
       <ResultsCard
         result={tripResult}
