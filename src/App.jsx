@@ -46,6 +46,8 @@ function App() {
   const [startCoords, setStartCoords] = useState(null)
   const [endCoords, setEndCoords] = useState(null)
 
+  const [darkMode, setDarkMode] = useState(false)
+
   useEffect(() => { // this runs in response to something SPECIFIC, not every render
     Promise.all([ // make sure both return something before moving on (both promises are fulfilled)
       fetch('http://localhost:3001/stops').then(r => r.json()), // fetch http response object, then parse and return r.json()
@@ -97,16 +99,25 @@ function App() {
             setEndCoords(coords)
           }}
         />
+
+        <button onClick={() => setDarkMode(!darkMode)}> 
+          {darkMode ? 'Light Mode' : 'Dark mode'}
+        </button>
+
         <Map
           stops={stops}
           tripResult={tripResult}
           routes={routes}
+          darkMode = {darkMode}
         />
         <button onClick={handleSearch}>Find Route</button>
       </div>
       <ResultsCard
         result={tripResult}
       />
+
+      
+
     </div>
   )
 }
