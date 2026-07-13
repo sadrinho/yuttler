@@ -101,7 +101,7 @@ function App() {
         />
 
         <button onClick={() => setDarkMode(!darkMode)}> 
-          {darkMode ? 'Light Mode' : 'Dark mode'}
+          {darkMode ? 'Toggle Light Mode' : 'Toggle Dark Mode'}
         </button>
 
         <Map
