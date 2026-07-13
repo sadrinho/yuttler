@@ -38,6 +38,7 @@ function App() {
   by using setStops(data), we're saying "update the value of data AND refresh the screen"
   */
   const [routes, setRoutes] = useState([])
+  const [buses, setBuses] = useState([])
 
   const [startInput, setStartInput] = useState('')
   const [endInput, setEndInput] = useState('')
@@ -59,6 +60,20 @@ function App() {
 
   }, []) // [] is the dependency array indicating that specific thing, but sicne it's empty, it runs exactly once
 
+  useEffect(() => {
+    function fetchBuses() {
+      fetch('http://localhost:3001/buses')
+        .then(r => r.json())
+        .then(data => setBuses(data))
+    }
+
+    fetchBuses()
+
+    const intervalId = setInterval(fetchBuses, 10000) //10000ms = 10s interval for now
+
+    return () => clearInterval(intervalId) // stops timer when the component unmounts
+
+  }, [])
   async function handleSearch() {
 
     setTripResult(null)  // clear previous result first
@@ -83,7 +98,7 @@ function App() {
   return (
     <div>
       <h1>Yale Shuttle</h1>
-      <p>Loaded {stops.length} stops, {routes.length} routes</p>
+      <p>Loaded {stops.length} stops, {routes.length} routes, {buses.length} buses</p>
       <div>
         <Autocomplete
           placeholder="Where are you starting from?"
@@ -107,6 +122,7 @@ function App() {
           tripResult={tripResult}
           routes={routes}
           darkMode = {darkMode}
+          buses={buses}
         />
 
         <button onClick={() => setDarkMode(!darkMode)}> 
