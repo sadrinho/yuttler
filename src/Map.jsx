@@ -37,7 +37,7 @@ const orangeIcon = makeIcon('orange')
 function Map( { stops, tripResult, routes }) {
 
   // if tripResult is valid, we store only that route (one element array). else, we store all routes
-  const routesToDraw = (tripResult && tripResult.success)
+  const routesToDraw = (tripResult && tripResult.success && tripResult.boardStop)
     ? routes.filter(route => route.id == tripResult.route.id ) // filters out all routes whose id doesn't match the tripResult's route ID (i.e. every route but one, atm)
     : routes
 
@@ -60,32 +60,35 @@ function Map( { stops, tripResult, routes }) {
 
         {/* draws the 4 pins denoting your specific route start/stop and bus stops */}
         {tripResult && tripResult.success && ( // order matters incase tripResult = null.
-        // we use the third && to ensure that it only evaluates when tripResult.success is true, and the same is true for tripResult
+        // we use the last && to ensure that it only evaluates when tripResult.success is true, and the same is true for tripResult
             <>
                 <Marker
                     position={[tripResult.startCoords.lat, tripResult.startCoords.lon]}
                     icon={startStopIcon}>
                     <Popup>You are here</Popup>
                 </Marker>
-
+          
                 <Marker
                         position={[tripResult.endCoords.lat, tripResult.endCoords.lon]}
                         icon={startStopIcon}>
                         <Popup>Destination</Popup> 
                 </Marker>
 
-                <Marker
-                        position={[tripResult.boardStop.lat, tripResult.boardStop.lon]}
-                        icon={boardAlightIcon}>
-                        <Popup>Board at: {tripResult.boardStop.name}</Popup> 
-                </Marker>
+                {tripResult.boardstop && ( // excludes walkOnly case
+                    <>
+                    <Marker
+                            position={[tripResult.boardStop.lat, tripResult.boardStop.lon]}
+                            icon={boardAlightIcon}>
+                            <Popup>Board at: {tripResult.boardStop.name}</Popup> 
+                    </Marker>
 
-                <Marker
-                        position={[tripResult.alightStop.lat, tripResult.alightStop.lon]}
-                        icon={boardAlightIcon}>
-                        <Popup>Get off at: {tripResult.alightStop.name}</Popup> 
-                </Marker>
-
+                    <Marker
+                            position={[tripResult.alightStop.lat, tripResult.alightStop.lon]}
+                            icon={boardAlightIcon}>
+                            <Popup>Get off at: {tripResult.alightStop.name}</Popup> 
+                    </Marker>
+                    </>
+                )}
 
 
     

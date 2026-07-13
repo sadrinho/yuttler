@@ -6,6 +6,14 @@ import Map from './Map'
 function ResultsCard({ result }) {
   if (!result) return <p>Enter a start and end location above</p>
   if (!result.success) return <p>{result.message}</p>
+  if(result.walkOnly)
+  {
+    return (
+      <div>
+        <p> No transit needed. Walk <strong>~{Math.round(result.distance)} meters</strong>  to your destination.</p>
+      </div>
+    )
+  }
 
   return (
     <div>
