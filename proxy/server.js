@@ -8,6 +8,11 @@ const app = express() // creates a server instance
 app.use(cors()) // tells that server instance to attach CORS headers 
                 // so we can actually send + receive the data we need
 
+
+
+// note: .get requests are done in order, top to bottom, by matching; can be important if using some sort of wildcard operator
+
+
 // when we make a GET request to /stops, run this function.
 // req is the incoming request
 // res is our response
@@ -31,11 +36,24 @@ app.get('/routes', async (req, res) => {
   res.json(data)
 })
 
+// fetch individual stop ETAs
+// stop url looks like: https://yale.downtownerapp.com/routes_eta.php?stop=96
+app.get('/eta/:stopId', async (req, res) => {
+  const stopId = req.params.stopId // Express captures this from the URL's path
+  const response = await fetch(`https://yale.downtownerapp.com/routes_eta.php?stop=${stopId}`) // we use route parameters since we don't want to hardcode a single stop w/ etas, nor load all the stops all the time.
+  // note to self: backticks, not quotes!! 
+  const data = await response.json()
+  res.json(data)
+})
+
 app.get('/buses', async (req, res) => {
   const response = await fetch('https://yale.downtownerapp.com/routes_buses.php')
   const data = await response.json()
   res.json(data)
 })
+
+
+
 
 app.listen(3001, () => console.log('Proxy running on http://localhost:3001'))
 // starts the server listening on port 3001. until this line runs, the server
