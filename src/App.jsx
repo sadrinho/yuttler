@@ -39,6 +39,7 @@ function App() {
   */
   const [routes, setRoutes] = useState([])
   const [buses, setBuses] = useState([])
+  const [boardEtas, setBoardEtas] = useState([])
 
   const [startInput, setStartInput] = useState('')
   const [endInput, setEndInput] = useState('')
@@ -67,13 +68,43 @@ function App() {
         .then(data => setBuses(data))
     }
 
-    fetchBuses()
+    fetchBuses() 
 
     const intervalId = setInterval(fetchBuses, 10000) //10000ms = 10s interval for now
 
     return () => clearInterval(intervalId) // stops timer when the component unmounts
 
   }, [])
+
+  useEffect(() => {
+
+    if(!tripResult || !tripResult.success || !tripResult.boardStop)
+    {
+      setBoardEtas([])
+      return
+    }
+    
+    const stopId = tripResult.boardStop.id
+
+    function fetchETA() {
+      fetch(`http://localhost:3001/eta/${stopId}`)
+        .then(r => r.json())
+        .then(data => {
+            console.log('etas:', stopId, data?.etas?.[stopId]?.etas || [])
+            setBoardEtas(data?.etas?.[stopId]?.etas || [])
+        })
+        // .then(data => setBoardEtas(data?.etas?.[stopId]?.etas || []) // the data should return an array of the etas for the stop. we added ?'s to handle an undefined input; we set boardEtas to [] in that case
+        // )
+    }
+
+    fetchETA() // immediate so it's not blank for the first 30s
+
+    const intervalId = setInterval(fetchETA, 30000) // 30s interval
+
+    return () => clearInterval(intervalId) 
+
+  }, [tripResult]) // effect re-runs when tripResult updates
+
   async function handleSearch() {
 
     setTripResult(null)  // clear previous result first
