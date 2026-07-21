@@ -3,7 +3,7 @@ import { planTrip, geocode, YALE_LANDMARKS } from './tripPlanner'
 import Autocomplete from './Autocomplete'
 import Map from './Map'
 
-function ResultsCard({ result }) {
+function ResultsCard({ result, boardEtas }) {
   if (!result) return <p>Enter a start and end location above</p>
   if (!result.success) return <p>{result.message}</p>
   if(result.walkOnly)
@@ -15,10 +15,14 @@ function ResultsCard({ result }) {
     )
   }
 
+  const relevantEtas = boardEtas.filter(eta => eta.route === result.route.id)
+  
+
   return (
     <div>
       <p>Walk to <strong>{result.boardStop.name}</strong></p>
       <p>Board the <strong>{result.route.name}</strong></p>
+      <p>The next bus is <strong></strong></p>
       <p>Get off at <strong>{result.alightStop.name}</strong></p>
     </div>
   )
@@ -90,7 +94,8 @@ function App() {
       fetch(`http://localhost:3001/eta/${stopId}`)
         .then(r => r.json())
         .then(data => {
-            console.log('etas:', stopId, data?.etas?.[stopId]?.etas || [])
+            console.log('etas:', stopId, data?.etas?.[stopId]?.etas || []) // for debugging
+            console.log(typeof tripResult.route.id)
             setBoardEtas(data?.etas?.[stopId]?.etas || [])
         })
         // .then(data => setBoardEtas(data?.etas?.[stopId]?.etas || []) // the data should return an array of the etas for the stop. we added ?'s to handle an undefined input; we set boardEtas to [] in that case
@@ -163,6 +168,7 @@ function App() {
       </div>
       <ResultsCard
         result={tripResult}
+        boardEtas={boardEtas}
       />
 
       
