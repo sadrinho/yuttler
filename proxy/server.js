@@ -49,6 +49,21 @@ app.get('/eta/:stopId', async (req, res) => {
   res.json(data)
 })
 
+// make a request to locationIQ's API based on a user query
+app.get('/autocomplete/:searchQuery', async (req, res) => {
+  const searchQuery = req.query.searchQuery 
+  const response = await fetch(`https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCATIONIQ_KEY}&q=${searchQuery}`)
+  const data = await response.json()
+  res.json(data)
+// TODO: bound this to new haven using &viewbox=FILTERNAME
+/*
+viewbox
+string
+The preferred area to find search results. Any two corner points of the box - max_lon,max_lat,min_lon,min_lat or min_lon,min_lat,max_lon,max_lat - are accepted in any order as long as they span a real box. To restrict results to those within the viewbox, use along with the bounded option.
+
+*/
+})
+
 app.get('/buses', async (req, res) => {
   const response = await fetch('https://yale.downtownerapp.com/routes_buses.php')
   const data = await response.json()
