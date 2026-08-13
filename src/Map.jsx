@@ -36,17 +36,19 @@ const orangeIcon = makeIcon('orange')
     // {success: true, boardStop, alightSTop, route} = a valid trip
 function Map( { stops, tripResult, routes, darkMode, buses }) {
 
-  // if tripResult is valid, we store only that route (one element array). else, we store all routes
+  // if tripResult is valid, we store only that route (one element array). else, we store all routes. this helps with drawing polylines
   const routesToDraw = (tripResult && tripResult.success && tripResult.boardStop)
     ? routes.filter(route => route.id == tripResult.route.id ) // filters out all routes whose id doesn't match the tripResult's route ID (i.e. every route but one, atm)
     : routes
 
-  const routesById = {}
+  const busesToDraw = (tripResult && tripResult.success && tripResult.boardStop)
+    ? buses.filter(bus => bus.route === tripResult.route.id )
+    : buses
+
+  const routesById = {} // creates an array with each route's index being identical to its id (for use in drawing bus objects)
   for (const route of routes) {
     routesById[route.id] = route
   }
-
-  
 
   function makeBusIcon(heading, color) { // creates the icons for the buses, given their headings
   return L.divIcon({
@@ -78,7 +80,7 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
           />
         ))}
 
-        {buses.map(bus => {
+        {busesToDraw.map(bus => {
           const route = routesById[bus.route]
           const routeColor = `#${route?.color || '888888'}`
           const routeName = route?.name || 'Unknown'
