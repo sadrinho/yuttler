@@ -2,7 +2,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import L from 'leaflet' // will be used in stop icons. L is just the base icon object
 
 
-function makeIcon(color) {
+function makeIcon(color) { // setting up the pin icons for use on displaying stops
   return new L.Icon({
     iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
@@ -45,6 +45,8 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
   for (const route of routes) {
     routesById[route.id] = route
   }
+
+  
 
   function makeBusIcon(heading, color) { // creates the icons for the buses, given their headings
   return L.divIcon({
