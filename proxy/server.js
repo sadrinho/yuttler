@@ -1,6 +1,9 @@
+require('dotenv').config() // reads .env file
+
 const express = require('express')
 const cors = require('cors')
 const fetch = require('node-fetch')
+
 // import statements in node are "require()"
 // edit: actualy this is outdated but we just downgraded the version of node-fetch we use to work with this
 
