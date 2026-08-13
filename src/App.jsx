@@ -15,14 +15,22 @@ function ResultsCard({ result, boardEtas }) {
     )
   }
 
-  const relevantEtas = boardEtas.filter(eta => eta.route === result.route.id)
+  const relevantEtas = boardEtas
+      .filter(eta => eta.route === result.route.id) // we filter for routes only relevant to our trip result
+      .sort((a, b) => a.avg - b.avg) // sorts where a (eta obj 1)'s avg min comes before b's avg min
   
 
   return (
     <div>
       <p>Walk to <strong>{result.boardStop.name}</strong></p>
       <p>Board the <strong>{result.route.name}</strong></p>
-      <p>The next bus is <strong></strong></p>
+      {relevantEtas.length === 0
+        ? <p> No buses currently inbound for <strong>{result.boardStop.name}.</strong> </p> // TODO: later, suggest alternative stops or pull nearby stops
+        : relevantEtas.map(eta => 
+          <p key={eta.bus_id}> 
+            Bus <strong>{eta.bus_name}</strong> in <strong>{eta.avg}</strong> min.
+          </p>)
+      }
       <p>Get off at <strong>{result.alightStop.name}</strong></p>
     </div>
   )
