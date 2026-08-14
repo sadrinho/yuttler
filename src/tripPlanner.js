@@ -18,7 +18,7 @@ const YALE_LANDMARKS = { //TODO: fix location coordinates. many are incorrect (o
 }
 
 const YALE_PLACES = [ 
-  //TODO: implement in V2
+  //TODO: implement
   {
     name: 'Yale School of Medicine',
     aliases: ['yms', 'med school', 'school of medicine', 'medical'],
@@ -33,34 +33,9 @@ const YALE_PLACES = [
   },
 ]
 
-async function geocode(query) { 
-  // using nominatim's free API to geocode user queries.
-  // also, uses async so we can use "await"
-
-  //first, checks landmarks list for a match
-  const normalized = query.toLowerCase().trim()
-  if (YALE_LANDMARKS[normalized]) {
-    return YALE_LANDMARKS[normalized]
-  }
-
-  // no match, uses nominatim
-
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&viewbox=-73.0,41.28,-72.9,41.33&bounded=1`
-  const response = await fetch(url)
-  const results = await response.json()
-
-  // console.log('Geocode results:', results)
-  
-  if (results.length === 0) return null
-  
-  return {
-    lat: parseFloat(results[0].lat),
-    lon: parseFloat(results[0].lon)
-  }
-}
 
 function findPlace(query, places) { 
-  //TODO: implement in V2
+  //TODO: implement
   const normalized = query.toLowerCase().trim()
 
   for(const candidate of places)
@@ -177,4 +152,4 @@ function getNearestStops(lat, lon, stops, count) { // self explanatory
     .slice(0, count)
 }
 
-export { planTrip, geocode, YALE_LANDMARKS } // reminder: tells other files how to import this. named export as planTrip
+export { planTrip, YALE_LANDMARKS } // reminder: tells other files how to import this. named export as planTrip
