@@ -15,6 +15,16 @@ app.use(cors()) // tells that server instance to attach CORS headers
 
 // note: .get requests are done in order, top to bottom, by matching; can be important if using some sort of wildcard operator
 
+function normalizeLocation(location, source) { // given a list of raw location objects from a locationIQ or nominatim call (determined by source), return an array of objects {name; lat; lon}
+  return location.map(locObj => ({ 
+    name: source === 'locationIQ' // locationIQ and nominatim return different name formats
+      ? locObj.display_place
+      : locObj.display_name.split(',')[0], // simple split grabbing first word for now; could be inaccurate. TODO: brainstorm improvement
+    lat: parseFloat(locObj.lat),
+    lon: parseFloat(locObj.lon)
+  }))
+}
+
 
 // when we make a GET request to /stops, run this function.
 // req is the incoming request
@@ -52,11 +62,19 @@ app.get('/eta/:stopId', async (req, res) => {
 // make a request to locationIQ's API based on a user query
 app.get('/autocomplete', async (req, res) => {
   const q = req.query.q // our search query
-  const response = await fetch(`https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&viewbox=-72.8084514641751%2C41.41930017433788%2C-73.02641547890617%2C41.22302882412524&bounded=1&normalizeaddress=1`)
+  const iqResponse = await fetch(`https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&viewbox=-72.8084514641751%2C41.41930017433788%2C-73.02641547890617%2C41.22302882412524&bounded=1&normalizeaddress=1`)
   
-  // &viewbox=-72.8084514641751%2C41.41930017433788%2C-73.02641547890617%2C41.22302882412524&normalizeaddress=1`)
-  const data = await response.json()
-  res.json(data)
+  if(!iqResponse.ok) { // if locationIQ's http status code flags an issue 
+    // call nominatim
+  const nomResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&viewbox=-72.8084514641751,41.41930017433788,-73.02641547890617,41.22302882412524&bounded=1`) // note: format of viewbox coord pairs differs with locationIQ  
+  const data = await nomResponse.json()  
+  res.json(normalizeLocation(data, 'nominatim')) // clean nomimatim output according to normalizeLocation specs before sending it
+  } 
+  else { //else, we send locationiq's (hopefully) valid result
+    const data = await iqResponse.json()
+    res.json(normalizeLocation(data, 'locationIQ'))
+  }
+  
 
 
 // encodeURIComponent to ensure we safely read text with special characters (like spaces)
