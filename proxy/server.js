@@ -3,6 +3,7 @@ require('dotenv').config() // reads .env file
 const express = require('express')
 const cors = require('cors')
 const fetch = require('node-fetch')
+const version = require('./package.json')
 
 // import statements in node are "require()"
 // edit: actualy this is outdated but we just downgraded the version of node-fetch we use to work with this
@@ -59,7 +60,7 @@ app.get('/eta/:stopId', async (req, res) => {
   res.json(data)
 })
 
-const iqURL = `https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&viewbox=-72.8084514641751%2C41.41930017433788%2C-73.02641547890617%2C41.22302882412524&bounded=1&normalizeaddress=1` //locationIQ's endpoint. see below for details
+const iqURL = `https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCATIONIQ_KEY}&viewbox=-72.8084514641751%2C41.41930017433788%2C-73.02641547890617%2C41.22302882412524&bounded=1&normalizeaddress=1` //locationIQ's endpoint. see below for details
 
 /* query param breakdown:
   // encodeURIComponent to ensure we safely read text with special characters (like spaces)
@@ -93,16 +94,16 @@ const iqURL = `https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCA
   // normalizeaddress=1 "makes parsing of the address object easier by returning a predictable and defined list of elements. Defaults to 0 for backward compatibility. We recommend setting this to 1 for new projects" 
 */
 
-const nomURL = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&viewbox=-72.8084514641751,41.41930017433788,-73.02641547890617,41.22302882412524&bounded=1` // nominatim's endpoint. note: format of viewbox coord pairs differs with locationIQ 
+const nomURL = `https://nominatim.openstreetmap.org/search?&format=json&limit=1&viewbox=-72.8084514641751,41.41930017433788,-73.02641547890617,41.22302882412524&bounded=1` // nominatim's endpoint. note: format of viewbox coord pairs differs with locationIQ 
 
 // make a request to locationIQ's API based on a user query
 app.get('/autocomplete', async (req, res) => {
   const q = req.query.q // our search query
-  const iqResponse = await fetch(iqURL)
+  const iqResponse = await fetch(`${iqURL}&q=${encodeURIComponent(q)}`) // add query to iqURL
   
   if(!iqResponse.ok) { // if locationIQ's http status code flags an issue 
     // call nominatim
-    const nomResponse = await fetch(nomURL, 
+    const nomResponse = await fetch(`${nomURL}&q=${encodeURIComponent(q)}`, 
       { headers: { 'User-Agent': `YaleShuttleTripPlanner/${version} (sadra.aliakbarpour@yale.edu)`} // we send a User-Agent header because nominatim's policy blocks us otherwise
     }) 
     
