@@ -25,9 +25,7 @@ function Autocomplete({ placeholder, onSelect }) {
     const normalized = input.toLowerCase().trim()
     const landmarkMatches = Object.keys(YALE_LANDMARKS) // Object.keys gives us an array of the keys
       .filter(name => name.startsWith(normalized)) //includes only the locations which match the normalized input
-      .map(name => ({ name, source: 'landmark' })) 
-      // Q: what is name? does this just create fields name and source in the landmarkMatches object?
-      // A: yes, creates a new object for each match w/ fields name and source
+      .map(name => ({ name, source: 'landmark' })) // creates a new object for each match w/ fields name and source
 
     setSuggestions(landmarkMatches) 
 
