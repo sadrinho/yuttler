@@ -59,26 +59,10 @@ app.get('/eta/:stopId', async (req, res) => {
   res.json(data)
 })
 
-// make a request to locationIQ's API based on a user query
-app.get('/autocomplete', async (req, res) => {
-  const q = req.query.q // our search query
-  const iqResponse = await fetch(`https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&viewbox=-72.8084514641751%2C41.41930017433788%2C-73.02641547890617%2C41.22302882412524&bounded=1&normalizeaddress=1`)
-  
-  if(!iqResponse.ok) { // if locationIQ's http status code flags an issue 
-    // call nominatim
-  const nomResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&viewbox=-72.8084514641751,41.41930017433788,-73.02641547890617,41.22302882412524&bounded=1`) // note: format of viewbox coord pairs differs with locationIQ  
-  const data = await nomResponse.json()  
-  res.json(normalizeLocation(data, 'nominatim')) // clean nomimatim output according to normalizeLocation specs before sending it
-  } 
-  else { //else, we send locationiq's (hopefully) valid result
-    const data = await iqResponse.json()
-    res.json(normalizeLocation(data, 'locationIQ'))
-  }
-  
+const iqURL = `https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&viewbox=-72.8084514641751%2C41.41930017433788%2C-73.02641547890617%2C41.22302882412524&bounded=1&normalizeaddress=1` //locationIQ's endpoint. see below for details
 
-
-// encodeURIComponent to ensure we safely read text with special characters (like spaces)
 /* query param breakdown:
+  // encodeURIComponent to ensure we safely read text with special characters (like spaces)
    // viewbox=... 
     // New Haven + North Haven + ~Woodmont coordinates (from https://geojson.io/?map=9.34/41.377/-72.94183)
     
@@ -108,6 +92,31 @@ app.get('/autocomplete', async (req, res) => {
   // bounded=1 means we strictly limit results to our viewbox
   // normalizeaddress=1 "makes parsing of the address object easier by returning a predictable and defined list of elements. Defaults to 0 for backward compatibility. We recommend setting this to 1 for new projects" 
 */
+
+const nomURL = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&viewbox=-72.8084514641751,41.41930017433788,-73.02641547890617,41.22302882412524&bounded=1` // nominatim's endpoint. note: format of viewbox coord pairs differs with locationIQ 
+
+// make a request to locationIQ's API based on a user query
+app.get('/autocomplete', async (req, res) => {
+  const q = req.query.q // our search query
+  const iqResponse = await fetch(iqURL)
+  
+  if(!iqResponse.ok) { // if locationIQ's http status code flags an issue 
+    // call nominatim
+    const nomResponse = await fetch(nomURL, 
+      { headers: { 'User-Agent': `YaleShuttleTripPlanner/${version} (sadra.aliakbarpour@yale.edu)`} // we send a User-Agent header because nominatim's policy blocks us otherwise
+    }) 
+    
+    if(!nomResponse.ok) { // ya we're probably cooked
+      return res.json([])
+    }
+
+    const data = await nomResponse.json()  
+    res.json(normalizeLocation(data, 'nominatim')) // clean nomimatim output according to normalizeLocation specs before sending it
+  } 
+  else { //else, we send locationiq's (hopefully) valid result
+    const data = await iqResponse.json()
+    res.json(normalizeLocation(data, 'locationIQ'))
+  }
 
 })
 
