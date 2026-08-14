@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { planTrip, geocode, YALE_LANDMARKS } from './tripPlanner'
+import { planTrip, YALE_LANDMARKS } from './tripPlanner'
 import Autocomplete from './Autocomplete'
 import Map from './Map'
 
@@ -146,17 +146,11 @@ function App() {
       <div>
         <Autocomplete
           placeholder="Where are you starting from?"
-          onSelect={suggestion => {
-            const coords = suggestion.coords || YALE_LANDMARKS[suggestion.name] // set to former unless falsy, in which case latter
-            setStartCoords(coords)
-          }}
+          onSelect={suggestion => setStartCoords(suggestion) }
         />
         <Autocomplete
           placeholder="Where are you going?"
-          onSelect={suggestion => {
-            const coords = suggestion.coords || YALE_LANDMARKS[suggestion.name]
-            setEndCoords(coords)
-          }}
+          onSelect={suggestion => setEndCoords(suggestion) }
         />
 
         <button onClick={handleSearch}>Find Route</button>
