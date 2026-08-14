@@ -50,18 +50,47 @@ app.get('/eta/:stopId', async (req, res) => {
 })
 
 // make a request to locationIQ's API based on a user query
-app.get('/autocomplete/:searchQuery', async (req, res) => {
-  const searchQuery = req.query.searchQuery 
-  const response = await fetch(`https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCATIONIQ_KEY}&q=${searchQuery}`)
+app.get('/autocomplete', async (req, res) => {
+  const q = req.query.q // our search query
+  const response = await fetch(`https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCATIONIQ_KEY}&q=${encodeURIComponent(q)}&viewbox=-72.8084514641751%2C41.41930017433788%2C-73.02641547890617%2C41.22302882412524&bounded=1&normalizeaddress=1`)
+  
+  // &viewbox=-72.8084514641751%2C41.41930017433788%2C-73.02641547890617%2C41.22302882412524&normalizeaddress=1`)
   const data = await response.json()
   res.json(data)
-// TODO: bound this to new haven using &viewbox=FILTERNAME
-/*
-viewbox
-string
-The preferred area to find search results. Any two corner points of the box - max_lon,max_lat,min_lon,min_lat or min_lon,min_lat,max_lon,max_lat - are accepted in any order as long as they span a real box. To restrict results to those within the viewbox, use along with the bounded option.
 
+
+// encodeURIComponent to ensure we safely read text with special characters (like spaces)
+/* query param breakdown:
+   // viewbox=... 
+    // New Haven + North Haven + ~Woodmont coordinates (from https://geojson.io/?map=9.34/41.377/-72.94183)
+    
+    https://geojson.io/?map=9.34/41.377/-72.94183
+
+                  -73.02641547890617, <- lon
+                  41.22302882412524 <- lat
+                ], <-- lower left
+                [
+                  -72.8084514641751,
+                  41.22302882412524
+                ],
+                [
+                  -72.8084514641751,
+                  41.41930017433788 <- top right
+                ],
+                [
+                  -73.02641547890617,
+                  41.41930017433788
+                ],
+                [
+                  -73.02641547890617,
+                  41.22302882412524
+
+
+  
+  // bounded=1 means we strictly limit results to our viewbox
+  // normalizeaddress=1 "makes parsing of the address object easier by returning a predictable and defined list of elements. Defaults to 0 for backward compatibility. We recommend setting this to 1 for new projects" 
 */
+
 })
 
 app.get('/buses', async (req, res) => {
