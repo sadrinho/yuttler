@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { planTrip, YALE_LANDMARKS } from './tripPlanner'
+import { planTrip, YALE_PLACES } from './tripPlanner'
 import Autocomplete from './Autocomplete'
 import Map from './Map'
 
