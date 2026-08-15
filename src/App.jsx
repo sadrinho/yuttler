@@ -64,8 +64,9 @@ function App() {
 
   useEffect(() => { // this runs in response to something SPECIFIC, not every render
     Promise.all([ // make sure both return something before moving on (both promises are fulfilled)
-      fetch('http://localhost:3001/stops').then(r => r.json()), // fetch http response object, then parse and return r.json()
-      fetch('http://localhost:3001/routes').then(r => r.json()) // index 1
+      fetch(`${import.meta.env.VITE_PROXY_URL}/stops`).then(r => r.json()), // fetch http response object, then parse and return r.json()
+      // import.meta.env.VITE_PROXY_URL for referencing the correct back-end url according to VITE_PROXY_URL in our dotenv 
+      fetch(`${import.meta.env.VITE_PROXY_URL}/routes`).then(r => r.json()) // index 1
     ]).then(([stopsData, routesData]) => { // ordered; stopsData = result[0], routesData = result[1]
       setStops(stopsData)
       setRoutes(routesData)
@@ -75,7 +76,7 @@ function App() {
 
   useEffect(() => {
     function fetchBuses() {
-      fetch('http://localhost:3001/buses')
+      fetch(`${import.meta.env.VITE_PROXY_URL}/buses`)
         .then(r => r.json())
         .then(data => setBuses(data))
     }
@@ -99,7 +100,7 @@ function App() {
     const stopId = tripResult.boardStop.id
 
     function fetchETA() {
-      fetch(`http://localhost:3001/eta/${stopId}`)
+      fetch(`${import.meta.env.VITE_PROXY_URL}/eta/${stopId}`)
         .then(r => r.json())
         .then(data => {
             console.log('etas:', stopId, data?.etas?.[stopId]?.etas || []) // for debugging

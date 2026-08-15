@@ -3,7 +3,7 @@ require('dotenv').config() // reads .env file
 const express = require('express')
 const cors = require('cors')
 const fetch = require('node-fetch')
-const version = require('./package.json')
+const { version } = require('./package.json')
 
 // import statements in node are "require()"
 // edit: actualy this is outdated but we just downgraded the version of node-fetch we use to work with this
@@ -131,6 +131,6 @@ app.get('/buses', async (req, res) => {
 const PORT = process.env.PORT || 3001 // either our provider injects process.env.PORT or we default it to 3001 for local development
 
 app.listen(PORT, () => console.log(`Proxy running on ${PORT}`))
-// starts the server listening on port 3001. until this line runs, the server
+// starts the server listening on port PORT. until this line runs, the server
 // exists in memory but doesn't accept connections. 
 // the console.log is just confirmation that it started in the terminal
