@@ -33,24 +33,17 @@ const YALE_PLACES = [
   },
 ]
 
-
-function findPlace(query, places) { 
-  //TODO: implement
+function findPlaceMatches(query, places) { // finds matches in our YALE_PLACES table based on user query
   const normalized = query.toLowerCase().trim()
-
-  for(const candidate of places)
-  {
-    
-    if([candidate.name.toLowerCase(), ...candidate.aliases].includes(normalized)) { // spread ... operator to unpack
-      return candidate;
-    }
-  }
-  return null;
-    // query: what the user typed, e.g. "med school"
-  // places: the YALE_PLACES array
-  // 
-  // Return the matching place object, or null if no match.
-  // A place matches if the query matches its name OR any of its aliases.
+  return places // operating on YALE_PLACES
+    .filter(place =>  
+      [place.name.toLowerCase(), ...place.aliases] // this is some magic right here. it allocates a whole new array consisting of the name plus every alias
+      .some(str => str.startsWith(normalized))) // checks if any str in our array (so either a name or alias) starts with our normalized query
+    .map(place => ({
+      name: place.name,
+      lat: place.lat,
+      lon: place.lon
+    }))
 }
 
 function findNearestStop(lat, lon, stops) { // rerturns nearest stop, self explanatory
