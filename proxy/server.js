@@ -9,7 +9,7 @@ const { version } = require('./package.json')
 // edit: actualy this is outdated but we just downgraded the version of node-fetch we use to work with this
 
 const app = express() // creates a server instance
-app.use(cors()) // tells that server instance to attach CORS headers 
+app.use(cors({ origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5173' })) // tells that server instance to attach CORS headers 
                 // so we can actually send + receive the data we need
 
 
@@ -25,6 +25,8 @@ function normalizeLocation(location, source) { // given a list of raw location o
     lon: parseFloat(locObj.lon)
   }))
 }
+
+app.get('/', (req, res) => res.send(`what's up chat, we're live`)) // default page lol
 
 
 // when we make a GET request to /stops, run this function.
