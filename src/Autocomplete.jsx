@@ -32,7 +32,7 @@ function Autocomplete({ placeholder, onSelect }) {
     if (normalized.length < 3) return  // probably an abbreviation, fallback on landmark table. TODO: bug test
     
     // request a call to either locationIQ or nominatim to geocode our input
-    fetch(`http://localhost:3001/autocomplete?q=${encodeURIComponent(input)}`)
+    fetch(`${import.meta.env.VITE_PROXY_URL}/autocomplete?q=${encodeURIComponent(input)}`)
       .then(r => r.json()) // array of location results {name, lat, lon}
       .then(results => setSuggestions(prev => [
         ...prev, // loads what was already existing in setSuggestions for this render cycle; this is always the keystroke's landmark matches
