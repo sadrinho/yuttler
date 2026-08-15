@@ -21,7 +21,8 @@ function Autocomplete({ placeholder, onSelect }) {
     }
 
     // always search landmarks instantly
-    setSuggestions(findPlaceMatches(input, YALE_PLACES))
+    const normalized = input.toLowerCase().trim()
+    setSuggestions(findPlaceMatches(normalized, YALE_PLACES)) // normalized is redundant here but its fine
 
     // debounced requests to make sure we don't blow through our request limits 
     clearTimeout(debounceTimer.current) // cancel the previous timer
@@ -35,7 +36,7 @@ function Autocomplete({ placeholder, onSelect }) {
       .then(r => r.json()) // array of location results {name, lat, lon}
       .then(results => setSuggestions(prev => [
         ...prev, // loads what was already existing in setSuggestions for this render cycle; this is always the keystroke's landmark matches
-        ...results
+        ...results.filter(result => !prev.some(place => place.name === result.name)) // only if no match in previous
       ])
     )
 
