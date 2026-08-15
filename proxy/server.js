@@ -128,9 +128,9 @@ app.get('/buses', async (req, res) => {
 })
 
 
+const PORT = process.env.PORT || 3001 // either our provider injects process.env.PORT or we default it to 3001 for local development
 
-
-app.listen(3001, () => console.log('Proxy running on http://localhost:3001'))
+app.listen(PORT, () => console.log(`Proxy running on ${PORT}`))
 // starts the server listening on port 3001. until this line runs, the server
 // exists in memory but doesn't accept connections. 
 // the console.log is just confirmation that it started in the terminal
