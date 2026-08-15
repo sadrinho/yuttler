@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { planTrip, YALE_PLACES } from './tripPlanner'
+import { planTrip } from './tripPlanner'
 import Autocomplete from './Autocomplete'
 import Map from './Map'
 
@@ -53,8 +53,6 @@ function App() {
   const [buses, setBuses] = useState([])
   const [boardEtas, setBoardEtas] = useState([])
 
-  const [startInput, setStartInput] = useState('')
-  const [endInput, setEndInput] = useState('')
   const [tripResult, setTripResult] = useState(null)
 
   const [startCoords, setStartCoords] = useState(null)
@@ -102,12 +100,7 @@ function App() {
     function fetchETA() {
       fetch(`${import.meta.env.VITE_PROXY_URL}/eta/${stopId}`)
         .then(r => r.json())
-        .then(data => {
-            console.log('etas:', stopId, data?.etas?.[stopId]?.etas || []) // for debugging
-            console.log(typeof tripResult.route.id)
-            setBoardEtas(data?.etas?.[stopId]?.etas || [])
-        })
-        // .then(data => setBoardEtas(data?.etas?.[stopId]?.etas || []) // the data should return an array of the etas for the stop. we added ?'s to handle an undefined input; we set boardEtas to [] in that case
+        .then(data => { setBoardEtas(data?.etas?.[stopId]?.etas || []) })
         // )
     }
 
@@ -119,7 +112,7 @@ function App() {
 
   }, [tripResult]) // effect re-runs when tripResult updates
 
-  async function handleSearch() {
+  function handleSearch() {
 
     setTripResult(null)  // clear previous result first
 

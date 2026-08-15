@@ -6,7 +6,7 @@ const fetch = require('node-fetch')
 const { version } = require('./package.json')
 
 // import statements in node are "require()"
-// edit: actualy this is outdated but we just downgraded the version of node-fetch we use to work with this
+// edit: we just downgraded the version of node-fetch we use to work with this
 
 const app = express() // creates a server instance
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5173' })) // tells that server instance to attach CORS headers 
@@ -20,7 +20,7 @@ function normalizeLocation(location, source) { // given a list of raw location o
   return location.map(locObj => ({ 
     name: source === 'locationIQ' // locationIQ and nominatim return different name formats
       ? locObj.display_place
-      : locObj.display_name.split(',')[0], // simple split grabbing first word for now; could be inaccurate. TODO: brainstorm improvement
+      : locObj.display_name.split(',')[0], // simple split grabbing first segment for now; could be inaccurate. TODO: brainstorm improvement
     lat: parseFloat(locObj.lat),
     lon: parseFloat(locObj.lon)
   }))
@@ -55,6 +55,7 @@ app.get('/routes', async (req, res) => {
 // fetch individual stop ETAs
 // stop url looks like: https://yale.downtownerapp.com/routes_eta.php?stop=96
 app.get('/eta/:stopId', async (req, res) => {
+  if (!/^\d+$/.test(stopId)) return res.status(400).json({ error: 'Invalid stop id' }) //safeguard for non-integer stopid param
   const stopId = req.params.stopId // Express captures this from the URL's path
   const response = await fetch(`https://yale.downtownerapp.com/routes_eta.php?stop=${stopId}`) // we use route parameters since we don't want to hardcode a single stop w/ etas, nor load all the stops all the time.
   // note to self: backticks, not quotes!! 
@@ -101,6 +102,7 @@ const nomURL = `https://nominatim.openstreetmap.org/search?&format=json&limit=1&
 // make a request to locationIQ's API based on a user query
 app.get('/autocomplete', async (req, res) => {
   const q = req.query.q // our search query
+  if (!q) return res.json([]) // so we don't waste an API call
   const iqResponse = await fetch(`${iqURL}&q=${encodeURIComponent(q)}`) // add query to iqURL
   
   if(!iqResponse.ok) { // if locationIQ's http status code flags an issue 

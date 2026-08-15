@@ -78,35 +78,13 @@ function findPlaceMatches(query, places) { // finds matches in our YALE_PLACES t
   const normalized = query.toLowerCase().trim()
   return places // operating on YALE_PLACES
     .filter(place =>  
-      [place.name.toLowerCase(), ...place.aliases] // this is some magic right here. it allocates a whole new array consisting of the name plus every alias
+      [place.name.toLowerCase(), ...place.aliases.map(a => a.toLowerCase())] // this is some magic right here. it allocates a whole new array consisting of the name plus every alias (nromalized to lowecase)
       .some(str => str.startsWith(normalized))) // checks if any str in our array (so either a name or alias) starts with our normalized query
     .map(place => ({
       name: place.name,
       lat: place.lat,
       lon: place.lon
     }))
-}
-
-function findNearestStop(lat, lon, stops) { // rerturns nearest stop, self explanatory
-// lat + lon self explanatory, stops is ... the list of all 172 stops?
-  let nearest = null 
-    // Q: why let? do we not need to define var type?
-    // A: not in javascript, dynamic typing. we use let because the value changes later
-  let shortestDistance = Infinity
-
-  for (const stop of stops) { 
-    // Q: why do we use const by default?
-    // A: the value is never being reassigned
-    const distance = getDistance(lat, lon, stop.lat, stop.lon) 
-    // Q: how can we access .lat and .lon w/o having defined a stop object?
-    // A: actually, the stops.json already has each stop object defined with properties. that's the purpose of a json file
-    if (distance < shortestDistance) {
-      shortestDistance = distance 
-      nearest = stop
-    }
-  }
-
-  return nearest
 }
 
 function getDistance(lat1, lon1, lat2, lon2) { // haversine formula. input 2 lat/lon pairs, receive distance in meters
@@ -126,7 +104,7 @@ function getDistance(lat1, lon1, lat2, lon2) { // haversine formula. input 2 lat
 function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
 
   // store the direct distance between stops (to check if we should walk instead)
-  const walkDistance = getDistance(startLat, startLon, endLat, endLon);
+  const walkDistance = getDistance(startLat, startLon, endLat, endLon)
 
   if (walkDistance < 400) // 400 meters is a safe minimum for a bus route for now; a bit on the shorter side if anything
   {
@@ -143,12 +121,6 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
   const startCandidates = getNearestStops(startLat, startLon, stops, 5)
   const endCandidates = getNearestStops(endLat, endLon, stops, 5)
 
-
-
-
-  // "In the right order" means that since the list of stops in a given route doesn't "jump" at the end i.e. the bus
-  //    doesn't just teleport to the starting stop after it finishes the last stop, we want to make sure we
-  //    avoid traveling much more than we need to in case both stops are in the route but not in order
   
 
   // try every combo of start and end candidates
@@ -158,6 +130,9 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
         const startIndex = route.stops.indexOf(startStop.id)
         const endIndex = route.stops.indexOf(endStop.id)
 
+        // "In the right order" means that since the list of stops in a given route doesn't "jump" at the end i.e. the bus
+        //    doesn't just teleport to the starting stop after it finishes the last stop, we want to make sure we
+        //    avoid traveling much more than we need to in case both stops are in the route but not in order
         if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
           return {
             success: true,
@@ -176,7 +151,7 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
 }
 
 function getNearestStops(lat, lon, stops, count) { // self explanatory
-  return [...stops] // ... is the spread operator, meaning "unpack everything about this thing." in this case we made a copy of the array stops
+  return stops 
     // return an array of stops but we've appended the distance between stops 
     .map(stop => ({
       ...stop,

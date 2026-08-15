@@ -12,8 +12,14 @@ function Autocomplete({ placeholder, onSelect }) {
   // useRef stores a value that persists between renders but doesn't trigger a re-render when changed
   // the timer ID needs to survive between keystrokes, but we don't need to re-render the component when we change it
   // useRef is perfect for "i need to remember x, but it's not UI data"
+  const justSelected = useRef(false) // so we don't burn an api call when updating input when the user makes a selection
 
   useEffect(() => {
+    if (justSelected.current) { // if the user made a selection, we don't want to run the rest of this useEffect bc it'd waste a call
+      justSelected.current = false
+      return
+    }
+
     if (input.length === 0) { 
     // if we didn't check manually, old suggestions linger on screen after the user deletes their input
       setSuggestions([])
@@ -26,7 +32,7 @@ function Autocomplete({ placeholder, onSelect }) {
 
     // debounced requests to make sure we don't blow through our request limits 
     clearTimeout(debounceTimer.current) // cancel the previous timer
-    debounceTimer.current = setTimeout(async () => { // store timer ID
+    debounceTimer.current = setTimeout(() => { // store timer ID
     // set the current value of the debounce timer to the following async function
 
     if (normalized.length < 3) return  // probably an abbreviation, fallback on landmark table. TODO: bug test
@@ -45,8 +51,8 @@ function Autocomplete({ placeholder, onSelect }) {
   }, [input]) // update this on change to input
 
   function handleSelect(suggestion) { // called on mouse down
+    justSelected.current = true;
     setInput(suggestion.name) // set our user input to the suggestion
-    setSuggestions([]) // clear suggestions
     setShow(false) // hide suggestions
     onSelect(suggestion) // prop passed down from parent, just like onSearch
   }
@@ -81,7 +87,7 @@ function Autocomplete({ placeholder, onSelect }) {
         }}>
           {suggestions.map(s => ( 
             <li //TODO: fix bug. stale fetch response can append to results when no longer helpful, "async race condition"
-              key={s.name} // stable enough to use as a key
+              key={`${s.name}--${s.lat}`} // should be 100% unique
               onMouseDown={() => handleSelect(s)} 
               // Q: why do we use onMouseDown and not onClick?
               // A: if we use onClick, onBlur fires because we lost focus, closes the dropdown, onClick then fires, but our dropdown is gone.
