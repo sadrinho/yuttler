@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { YALE_LANDMARKS } from './tripPlanner'
+import { YALE_PLACES, findPlaceMatches } from './tripPlanner'
 
 function Autocomplete({ placeholder, onSelect }) {
   // dropdown autocomplete for user inputs in the start/end fields
@@ -21,12 +21,7 @@ function Autocomplete({ placeholder, onSelect }) {
     }
 
     // always search landmarks instantly
-    const normalized = input.toLowerCase().trim()
-    const landmarkMatches = Object.keys(YALE_LANDMARKS) // Object.keys gives us an array of the keys
-      .filter(name => name.startsWith(normalized)) //includes only the locations which match the normalized input
-      .map(name => ({ name, ...YALE_LANDMARKS[name]})) // creates a new object for each match w/ fields name, lat, and lon
-
-    setSuggestions(landmarkMatches) 
+    setSuggestions(findPlaceMatches(input, YALE_PLACES))
 
     // debounced requests to make sure we don't blow through our request limits 
     clearTimeout(debounceTimer.current) // cancel the previous timer
