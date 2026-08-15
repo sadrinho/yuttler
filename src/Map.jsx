@@ -13,9 +13,19 @@ function makeIcon(color) { // setting up the pin icons for use on displaying sto
   })
 }
 
+function makeBusIcon(heading, color) { // creates the icons for the buses, given their headings
+  return L.divIcon({
+    className: 'bus-icon', // for css styling
+    html: `<div style="transform: rotate(${heading}deg); color: ${color}; font-size: 20px;">▲</div>`, 
+    iconSize: [20, 20], 
+    iconAnchor: [10, 10] // anchored at the center
+  })
+}
+
 // takes the flat array of lat/lon positions (from /routes) and returns an array of [lat, lon] pairs; used to draw each route w/ polyline
 function pairUp(flat)
 {
+  if(!Array.isArray(flat)) return [] // to catch null or undefined
   const pairs = []
   for(let i = 0; i < flat.length; i += 2) //TODO: handle bad input (null flat or odd length)
   {
@@ -27,7 +37,7 @@ function pairUp(flat)
 const greenIcon = makeIcon('green')
 const boardAlightIcon = makeIcon('red')
 const startStopIcon = makeIcon('blue')
-const orangeIcon = makeIcon('orange')
+const destinationIcon = makeIcon('orange')
 
 // stops = list of stops
 // tripResult can be:
@@ -38,26 +48,17 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
 
   // if tripResult is valid, we store only that route (one element array). else, we store all routes. this helps with drawing polylines
   const routesToDraw = (tripResult && tripResult.success && tripResult.boardStop)
-    ? routes.filter(route => route.id == tripResult.route.id ) // filters out all routes whose id doesn't match the tripResult's route ID (i.e. every route but one, atm)
+    ? routes.filter(route => route.id === tripResult.route.id ) // filters out all routes whose id doesn't match the tripResult's route ID (i.e. every route but one, atm)
     : routes
 
   const busesToDraw = (tripResult && tripResult.success && tripResult.boardStop)
     ? buses.filter(bus => bus.route === tripResult.route.id )
     : buses
 
-  const routesById = {} // creates an array with each route's index being identical to its id (for use in drawing bus objects)
+  const routesById = {} // object mapping route id to route for instant lookup when drawing buses
   for (const route of routes) {
     routesById[route.id] = route
   }
-
-  function makeBusIcon(heading, color) { // creates the icons for the buses, given their headings
-  return L.divIcon({
-    className: 'bus-icon', // for css styling
-    html: `<div style="transform: rotate(${heading}deg); color: ${color}; font-size: 20px;">▲</div>`, 
-    iconSize: [20, 20], 
-    iconAnchor: [10, 10] // anchored at the center
-  })
-}
 
   return ( //anytime we want to do anything within the map instance, we have to perform that within <MapContainer>, since it uses React Context to give its children access to the map instance
     <MapContainer center={[41.3116, -72.9271]} zoom={15} style={{ height: '500px', width: '100%' }}> 
@@ -110,7 +111,7 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
           
                 <Marker
                         position={[tripResult.endCoords.lat, tripResult.endCoords.lon]}
-                        icon={startStopIcon}>
+                        icon={orangeIcon}>
                         <Popup>Destination</Popup> 
                 </Marker>
 
