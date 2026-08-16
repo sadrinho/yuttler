@@ -9,7 +9,8 @@ const { version } = require('./package.json')
 // edit: we just downgraded the version of node-fetch we use to work with this
 
 const app = express() // creates a server instance
-app.use(cors({ origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5173' })) // tells that server instance to attach CORS headers 
+const allowedOrigin = process.env.ALLOWED_ORIGIN.split(',') // handles multiple allowed origins
+app.use(cors({ origin: allowedOrigin })) // tells that server instance to attach CORS headers 
                 // so we can actually send + receive the data we need
 
 
@@ -55,8 +56,8 @@ app.get('/routes', async (req, res) => {
 // fetch individual stop ETAs
 // stop url looks like: https://yale.downtownerapp.com/routes_eta.php?stop=96
 app.get('/eta/:stopId', async (req, res) => {
-  if (!/^\d+$/.test(stopId)) return res.status(400).json({ error: 'Invalid stop id' }) //safeguard for non-integer stopid param
   const stopId = req.params.stopId // Express captures this from the URL's path
+  if (!/^\d+$/.test(stopId)) return res.status(400).json({ error: 'Invalid stop id' }) //safeguard for non-integer stopid param
   const response = await fetch(`https://yale.downtownerapp.com/routes_eta.php?stop=${stopId}`) // we use route parameters since we don't want to hardcode a single stop w/ etas, nor load all the stops all the time.
   // note to self: backticks, not quotes!! 
   const data = await response.json()

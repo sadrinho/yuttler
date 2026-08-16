@@ -111,7 +111,7 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
           
                 <Marker
                         position={[tripResult.endCoords.lat, tripResult.endCoords.lon]}
-                        icon={orangeIcon}>
+                        icon={destinationIcon}>
                         <Popup>Destination</Popup> 
                 </Marker>
 
