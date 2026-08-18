@@ -56,6 +56,29 @@ function Autocomplete({ placeholder, onSelect }) {
     setShow(false) // hide suggestions
     onSelect(suggestion) // prop passed down from parent, just like onSearch
   }
+                  
+
+  function handleUseLocation() { // gets the user's location and updates input accordingly
+    if (!navigator.geolocation) return  // either no location permissions 
+
+    navigator.geolocation.getCurrentPosition( // .getCurrentPosition(success, error) and each is treated like a callback
+      (success) => { // on success, pass down a location object
+        const location = {
+          name: 'Current location',
+          lat: success.coords.latitude, // 41.3147338, (hardcoded bf coords for tesitng)
+          lon: success.coords.longitude // -72.9250155 
+        }
+        handleSelect(location)
+      },
+      (error) => { // on error,log in console
+        // error.code: 1 = denied, 2 = unavailable, 3 = timeout
+        console.log(error.code)
+      },
+      ({ // an options object so we can specify that,
+        timeout: 10000 // 10s is the max amount of time we wait before calling our error callback
+      })
+    )
+  }
 
   return (
     // not sure what position relative means
@@ -72,6 +95,7 @@ function Autocomplete({ placeholder, onSelect }) {
         onBlur={() => setTimeout(() => setShow(false), 150)} 
         // 150ms timeout to help protect against the element disappearing when we need it (i.e. in the case of selecting smth)
       />
+      <button type="button" onClick={handleUseLocation}>📍</button>
       {show && suggestions.length > 0 && ( 
         // Q: not sure why we do the second &&
         // A: two separate conditions: show = user is focused, suggestions.length > 0 = theres something to show

@@ -143,7 +143,7 @@ function App() {
       return;
     }
 
-    const stopId = boarded? tripResult.alightStop : tripResult.boardStop.id;
+    const stopId = boardedBusId? tripResult.alightStop : tripResult.boardStop.id;
 
     function fetchETA() {
       fetch(`${import.meta.env.VITE_PROXY_URL}/eta/${stopId}`) // fetches etas for our stopID
@@ -208,8 +208,8 @@ function App() {
       <div>
         <Autocomplete
           placeholder="Where are you starting from?"
-          onSelect={(suggestion) => setStartCoords(suggestion)}
-        />
+          onSelect={(suggestion) => setStartCoords (suggestion)}
+        /> 
         <Autocomplete
           placeholder="Where are you going?"
           onSelect={(suggestion) => setEndCoords(suggestion)}
