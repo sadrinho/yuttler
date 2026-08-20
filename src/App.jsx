@@ -189,7 +189,7 @@ function App() {
 
   if(tripResult?.success && tripResult.boardStop && trackedBus) // trackedBus guard incase no bus matches and therefore no etas
   {
-    const targetStop = boarded? tripResult.alightStop : tripResult.boardStop // switches target calculation between "stops to get on" and "stops to get off"
+    const targetStop = boardedBusId? tripResult.alightStop : tripResult.boardStop // switches target calculation between "stops to get on" and "stops to get off"
     const targetIndex = tripResult.route.stops.indexOf(targetStop.id)
     const busIndex = tripResult.route.stops.indexOf(trackedBus.lastStop)
     const routeLen = tripResult.route?.stops?.length
