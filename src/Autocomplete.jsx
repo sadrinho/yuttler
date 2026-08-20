@@ -111,7 +111,7 @@ function Autocomplete({ placeholder, onSelect }) {
         }}>
           {suggestions.map(s => ( 
             <li //TODO: fix bug. stale fetch response can append to results when no longer helpful, "async race condition"
-              key={`${s.name}--${s.lat}`} // should be 100% unique
+              key={`[${suggestions.indexOf(s)}]-${s.name}-${s.lat}`} // should be 100% unique
               onMouseDown={() => handleSelect(s)} 
               // Q: why do we use onMouseDown and not onClick?
               // A: if we use onClick, onBlur fires because we lost focus, closes the dropdown, onClick then fires, but our dropdown is gone.

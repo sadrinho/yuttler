@@ -21,27 +21,36 @@ function ResultsCard({ result, boardEtas, relevantEtas, trackedBus, onBoard, boa
   
   return (
     <div>
-      <p>
-        Walk to <strong>{result.boardStop.name}</strong>
-      </p>
-      <p>
-        Board the <strong>{result.route.name}</strong>
-      </p>
-      {relevantEtas.length === 0 ? (
+      {boarded? // user is on board
+      (
+        <>
+          <p> 
+            Currently riding the <strong>{result.route.name}</strong>. {/* TODO: verify transfer logic */}
+          </p>
+          <p>
+          Get off at <strong>{result.alightStop.name}</strong>.
+          </p>
+          <p>
+            {stopsRemaining} stops remaining.
+          </p>
+        </>
+      )
+      : relevantEtas.length === 0 ? ( // user is not on board, no relevantEtas for boardStop
         <p>
           {" "}
           No buses currently inbound for{" "}
           <strong>{result.boardStop.name}.</strong>{" "}
         </p> // TODO: later, suggest alternative stops or pull nearby stops
-      ) : !boarded ?
+      ) : // user is not on board but buses incoming for boardStop 
       (
         <>
-        <p>{stopsRemaining} stops until you board bus{trackedBus?.name}</p>
-        {stopsRemaining && stopsRemaining <= 30 &&
-        (
-          <button onClick={onBoard}>I'm on board</button>
-        )
-        }
+          <p>
+            Walk to <strong>{result.boardStop.name}</strong>
+          </p>
+          <p>
+            Board the <strong>{result.route.name}</strong>
+          </p>
+          <p>{stopsRemaining} stops until you board bus <strong>{trackedBus?.name}</strong></p>
         
         {relevantEtas.map((eta) => ( // TODO: perhaps this is inappropriate for a presentational component?
           <p key={eta.bus_id}>
@@ -49,17 +58,12 @@ function ResultsCard({ result, boardEtas, relevantEtas, trackedBus, onBoard, boa
             min.
           </p>
         ))}
-        </>
-      )
-      :
-      (
-        <>
-          <p>
-          Get off at <strong>{result.alightStop.name}</strong>
-          </p>
-          <p>
-            {stopsRemaining} stops remaining.
-          </p>
+
+        {stopsRemaining !== null && stopsRemaining <= 30 && // TODO: change 30 to realistic number after testing
+        (
+          <button onClick={onBoard}>I'm on board</button>
+        )
+        }
         </>
       )}
       
@@ -143,7 +147,7 @@ function App() {
       return;
     }
 
-    const stopId = boardedBusId? tripResult.alightStop : tripResult.boardStop.id;
+    const stopId = boardedBusId? tripResult.alightStop.id : tripResult.boardStop.id;
 
     function fetchETA() {
       fetch(`${import.meta.env.VITE_PROXY_URL}/eta/${stopId}`) // fetches etas for our stopID
@@ -193,7 +197,7 @@ function App() {
     const targetIndex = tripResult.route.stops.indexOf(targetStop.id)
     const busIndex = tripResult.route.stops.indexOf(trackedBus.lastStop)
     const routeLen = tripResult.route?.stops?.length
-    stopsRemaining = (targetStop === -1 || targetIndex === -1 || !routeLen)
+    stopsRemaining = (busIndex === -1 || targetIndex === -1 || !routeLen)
     ? null
     : (targetIndex - busIndex + routeLen) % routeLen
   }
