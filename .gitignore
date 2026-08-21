@@ -26,3 +26,5 @@ dist-ssr
 # dotenvs
 .env
 .env
+
+mailmap.txt
