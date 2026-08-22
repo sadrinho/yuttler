@@ -1,3 +1,7 @@
+# IMPORTANT: The below README is outdated (v1.0.0, current as of 8/21 is 2.2.1). Expect a new README by 8/23.
+
+
+
 # Yale Shuttle Trip Planner
 
 A Google Maps style trip planner for the Yale Shuttle transit system. Enter where you are and where you're going, and it tells you which stop to walk to, which bus to board, and where to get off, with the route drawn on an interactive map.

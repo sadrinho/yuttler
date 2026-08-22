@@ -9,10 +9,20 @@ const { version } = require('./package.json')
 // edit: we just downgraded the version of node-fetch we use to work with this
 
 const app = express() // creates a server instance
-const allowedOrigin = process.env.ALLOWED_ORIGIN.split(',') // handles multiple allowed origins
+
+if (!process.env.ALLOWED_ORIGIN) {
+  console.warn('defaulting to http://localhost:5173') // cathces prev error
+}
+const allowedOrigin = (process.env.ALLOWED_ORIGIN || 'http://localhost:5173')
 app.use(cors({ origin: allowedOrigin })) // tells that server instance to attach CORS headers 
                 // so we can actually send + receive the data we need
 
+function scrubKey(text) { // had an issue where errors would reveal the API key; found this fix
+  const str = String(text)
+  return process.env.LOCATIONIQ_KEY
+    ? str.replaceAll(process.env.LOCATIONIQ_KEY, '[super-ultra-secret-key, pal]')
+    : str
+}
 
 
 // note: .get requests are done in order, top to bottom, by matching; can be important if using some sort of wildcard operator
@@ -104,32 +114,47 @@ const nomURL = `https://nominatim.openstreetmap.org/search?&format=json&limit=1&
 app.get('/autocomplete', async (req, res) => {
   const q = req.query.q // our search query
   if (!q) return res.json([]) // so we don't waste an API call
-  const iqResponse = await fetch(`${iqURL}&q=${encodeURIComponent(q)}`) // add query to iqURL
   
-  if(!iqResponse.ok) { // if locationIQ's http status code flags an issue 
-    // call nominatim
-    const nomResponse = await fetch(`${nomURL}&q=${encodeURIComponent(q)}`, 
+  // the below block is for locationIQ
+
+  try {
+  const iqResponse = await fetch(`${iqURL}&q=${encodeURIComponent(q)}`) // add query to iqURL
+  if(iqResponse.ok) {
+    const data = await iqResponse.json()
+    return res.json(normalizeLocation(data, 'locationIQ')) // send locationIQ result
+  }
+  // something's wrong, locationIQ sent back an error status
+  console.error('LocationIQ returned status:', iqResponse.status)
+} catch (err) {
+  // big boy error, probably network related. request never cocmpleted at all
+  console.error('LocationIQ request failed:', scrubKey(err.message))
+}
+
+// call nominatim, our fallback option
+try {
+      const nomResponse = await fetch(`${nomURL}&q=${encodeURIComponent(q)}`, 
       { headers: { 'User-Agent': `YaleShuttleTripPlanner/${version} (sadra.aliakbarpour@yale.edu)`} // we send a User-Agent header because nominatim's policy blocks us otherwise
     }) 
-    
-    if(!nomResponse.ok) { // ya we're probably cooked
+    if (!nomResponse.ok) { // ya we're probably cooked
+      console.error('Nominatim returned status:', nomResponse.status)
       return res.json([])
     }
-
-    const data = await nomResponse.json()  
-    res.json(normalizeLocation(data, 'nominatim')) // clean nomimatim output according to normalizeLocation specs before sending it
-  } 
-  else { //else, we send locationiq's (hopefully) valid result
-    const data = await iqResponse.json()
-    res.json(normalizeLocation(data, 'locationIQ'))
-  }
-
-})
+    const data = await nomResponse.json()
+    return res.json(normalizeLocation(data, 'nominatim'))
+} catch (err) {
+  console.error('Nominatim request failed:', scrubKey(err.message))
+  return res.json([])
+}})
 
 app.get('/buses', async (req, res) => {
   const response = await fetch('https://yale.downtownerapp.com/routes_buses.php')
   const data = await response.json()
   res.json(data)
+})
+
+app.use((err, req, res, next) => { // express skips everything above this and calls this when a function calls next() with an argument (next(err))
+  console.error('Unhandled error:', scrubKey(err.stack)) // server side only. also, hopefully scrubKey is redundant here since nothing uses a key other than autocomplete, but that could change
+  res.status(500).json({ error: 'Internal server error' }) // generic verison
 })
 
 
