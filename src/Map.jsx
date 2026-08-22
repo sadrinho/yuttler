@@ -34,25 +34,6 @@ function pairUp(flat)
   return pairs
 }
 
-function buildGraph(routes) {
-  const graph = {}
-  
-  for(const route of routes) {
-
-    for(let stop = 0; stop < route.stops.length; stop++) {
-
-      const stopKey = route.stops[stop]
-      if(!graph[stopKey]) { graph[stopKey] = [] } // if we haven't already initialized the value corresponding to our stop's key as an array, do so now
-      for(let nextStop = stop + 1; nextStop < route.stops.length; nextStop++) {
-
-        graph[stopKey].push({ to: route.stops[nextStop], route })
-
-      }
-    }
-  } 
-  return graph
-}
-
 const greenIcon = makeIcon('green')
 const boardAlightIcon = makeIcon('red')
 const startStopIcon = makeIcon('blue')
