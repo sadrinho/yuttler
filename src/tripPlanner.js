@@ -227,4 +227,4 @@ function getNearestStops(lat, lon, stops, count) { // self explanatory
     .slice(0, count)
 }
 
-export { planTrip, YALE_PLACES, findPlaceMatches } // reminder: tells other files how to import this. named export as planTrip
+export { planTrip, YALE_PLACES, findPlaceMatches, buildGraph, findPath, reconstructPath} // reminder: tells other files how to import this. named export as planTrip
