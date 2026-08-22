@@ -110,7 +110,6 @@ function App() {
 
   const trackedBus = buses.find(bus => bus.id === trackedBusId)
 
-  
 
   useEffect(() => {
     // this runs in response to something SPECIFIC, not every render

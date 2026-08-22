@@ -74,6 +74,71 @@ const YALE_PLACES = [
   { name: 'Yale University Art Gallery', aliases: ['yuag', 'art gallery'], lat: 41.3084354, lon: -72.9308795 },               
 ] 
 
+function buildGraph(routes) { // given an array of route objects, builds a graph with the following structure: 
+// nodes: {"#55": [ {to: "56", route: routeA}, {to: "57", route: routeA} ]
+// edges: edges represent a ride/leg. for instance, node 55 is connected to 57, thus, it takes 1 ride to get from 55 to 57. if you wanted to get to stop x, and 57 was connected to x but 55 wasn't, you would go 55 -> 57 -> x; 2 edges = 2 legs = 1 transfer
+
+  const graph = {}
+  
+  for(const route of routes) {
+
+    for(let stop = 0; stop < route.stops.length; stop++) {
+
+      const stopKey = route.stops[stop]
+      if(!graph[stopKey]) { graph[stopKey] = [] } // if we haven't already initialized the value corresponding to our stop's key as an array, do so now
+      for(let nextStop = stop + 1; nextStop < route.stops.length; nextStop++) {
+
+        graph[stopKey].push({ to: route.stops[nextStop], route })
+
+      }
+    }
+  } 
+  return graph
+}
+
+function reconstructPath(prev, startStopId, endStopId) // helper for findPath; given our  prev table, we want to return an array of triples with the edges' .from and .route , + a new .to reconstructed from prev's .stop
+{
+  const pathTriple = []
+  let current = endStopId
+
+  while (prev[current]) {// terminates when we reach the start entry, since it doesn't have a prev entry
+    pathTriple.push({
+      from: prev[current].from,
+      to: current, // confusing at first, but current is one step ahead of prev[current]'s values
+      route: prev[current].route
+    })
+    current = prev[current].from // we're stepping backwards (until !prev[current], aka until we reach the start)
+  }
+
+  if(current !== startStopId) {return null} // something's very wrong if i trigger this lmao
+
+  return pathTriple.reverse() // we built using .push, so it's backwards; reverse before returning
+}
+
+function findPath(graph, startStopId, endStopId) { // wrote "stopstop" at first lmao  
+  if(!graph[startStopId] || !graph[endStopId]) {return null}
+  const queue = [startStopId] // note: this + .shift() is actually O(n)... YIKES. should be OK for now
+  const visited = new Set([startStopId]) // set so lookup is O(1)
+  const prev = {} // maps prev[stopId] = {from: prevStopId, route: routeObj} so we can backtrack and recreate the path once we find our stop node
+
+  while (queue.length > 0) {
+    const nodeId = queue.shift();
+    if(nodeId === endStopId) {
+      return reconstructPath(prev, startStopId, endStopId)
+    }
+    for(const edge of graph[nodeId]) { // loops over the edge objects for our popped node {to: ... route: ...}(see buildGraph)
+      const newNodeId = edge.to
+      if(!visited.has(newNodeId))
+      {
+        queue.push(newNodeId)
+        visited.add(newNodeId)
+        prev[newNodeId] = {from: nodeId, route: edge.route}
+      }
+    }
+  }
+  return null;
+}
+
 function findPlaceMatches(query, places) { // finds matches in our YALE_PLACES table based on user query
   const normalized = query.toLowerCase().trim()
   return places // operating on YALE_PLACES
@@ -115,6 +180,7 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
       endCoords: { lat: endLat, lon: endLon },
       distance: walkDistance
     }
+  
   }
 
   // find the 5 nearest stops to each location
