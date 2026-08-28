@@ -42,7 +42,7 @@ const YALE_PLACES = [
   { name: 'Old Campus', aliases: ['oc'], lat: 41.309049230060644, lon: -72.92826663670874},
   { name: 'Osborn Memorial Laboratories', aliases: ['oml'], lat: 41.3164223, lon: -72.9239206 },               
   { name: 'Pierson College', aliases: ['pc'], lat: 41.3101937, lon: -72.9323827 },                             
-  { name: 'Phelps Hall', aliases: ['ph'], lat: 41.30844, lon: -72.9281459 },                                   
+  { name: 'Phelps Gate', aliases: ['phelps hall'], lat: 41.30844, lon: -72.9281459 },                                   
   { name: 'Payne Whitney Gymnasium', aliases: ['pwg', 'gym'], lat: 41.3137225, lon: -72.9310857 },                    
   { name: 'Rudolph Hall', aliases: ['rdh'], lat: 41.3087688, lon: -72.9318864 },                               
   { name: 'Rosenkranz Hall', aliases: ['rkz'], lat: 41.314701, lon: -72.9245511 },                             
