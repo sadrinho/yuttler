@@ -10,10 +10,7 @@ const { version } = require('./package.json')
 
 const app = express() // creates a server instance
 
-if (!process.env.ALLOWED_ORIGIN) {
-  console.warn('defaulting to http://localhost:5173') // cathces prev error
-}
-const allowedOrigin = (process.env.ALLOWED_ORIGIN || 'http://localhost:5173')
+const allowedOrigin = process.env.ALLOWED_ORIGIN.split(',') //handles multiple allowed origins
 app.use(cors({ origin: allowedOrigin })) // tells that server instance to attach CORS headers 
                 // so we can actually send + receive the data we need
 
