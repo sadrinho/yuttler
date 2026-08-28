@@ -74,6 +74,11 @@ const YALE_PLACES = [
   { name: 'Yale University Art Gallery', aliases: ['yuag', 'art gallery'], lat: 41.3084354, lon: -72.9308795 },               
 ] 
 
+const stopsById = {} // builds a lookup object for later o(1) lookup of stops by id number
+for(const stop of stops) {
+  stopsById[stop.id] = stop 
+}
+
 function buildGraph(routes) { // given an array of route objects, builds a graph with the following structure: 
 // nodes: {"#55": [ {to: "56", route: routeA}, {to: "57", route: routeA} ]
 // edges: edges represent a ride/leg. for instance, node 55 is connected to 57, thus, it takes 1 ride to get from 55 to 57. if you wanted to get to stop x, and 57 was connected to x but 55 wasn't, you would go 55 -> 57 -> x; 2 edges = 2 legs = 1 transfer
@@ -125,6 +130,7 @@ function findPath(graph, startStopId, endStopId) { // wrote "stopstop" at first 
     const nodeId = queue.shift();
     if(nodeId === endStopId) {
       return reconstructPath(prev, startStopId, endStopId)
+      // todo: better comment here
     }
     for(const edge of graph[nodeId]) { // loops over the edge objects for our popped node {to: ... route: ...}(see buildGraph)
       const newNodeId = edge.to
@@ -187,33 +193,53 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
   const startCandidates = getNearestStops(startLat, startLon, stops, 5)
   const endCandidates = getNearestStops(endLat, endLon, stops, 5)
 
-  
+  const graph = buildGraph(routes) 
+  // builds our graph based on our routes + stops; see buildGraph implementation for more details
 
-  // try every combo of start and end candidates
+  const candidates = [] 
+  // candidates will later store every findPath(..., startStop, endStop) result "path" as { path, walkDistance: startStop.distance + endStop.distance }
+  // we store walkdistance for our tiebreak, which is based on overall lowest walking distance between our start + end locations and their respective stops
+
+  // for every combo of start + end stops (25 total)
   for (const startStop of startCandidates) {
     for (const endStop of endCandidates) {
-      for (const route of routes) {
-        const startIndex = route.stops.indexOf(startStop.id)
-        const endIndex = route.stops.indexOf(endStop.id)
-
-        // "In the right order" means that since the list of stops in a given route doesn't "jump" at the end i.e. the bus
-        //    doesn't just teleport to the starting stop after it finishes the last stop, we want to make sure we
-        //    avoid traveling much more than we need to in case both stops are in the route but not in order
-        if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
-          return {
-            success: true,
-            startCoords: { lat: startLat, lon: startLon },
-            endCoords: { lat: endLat, lon: endLon },
-            boardStop: startStop,
-            alightStop: endStop, // added a new word to my vocabulary
-            route: route
-          }
-        }
+      const path = findPath(graph, startStop.id, endStop.id)
+      if(path) { // only push when path !null
+        candidates.push({ path, walkDistance: startStop.distance + endStop.distance}) // see candidates initialization for more details
       }
     }
   }
 
-  return { success: false, message: "No direct route found" }
+  if (candidates.length === 0){
+    return { success: false, message: "No route found" }
+  }
+
+  // we now have our populated candidates array. we find the best option (if it exists) based on minimum legs, and as a tiebreaker, least walking distance
+
+  candidates.sort((a,b) => 
+    a.path.length - b.path.length || // sort comparator returns 0 (falsy) on tie, in which case || falls through to return walkDistance
+    a.walkDistance - b.walkDistance
+  )
+
+    // candidates[0] is now our winning path + distance wrapper, so we can store it:
+  const finalPath = candidates[0]
+
+  // ... and map the path component to our desired shape. we want to return an array legs[] where each object is one leg { boardStop, alightStop, route}. so:
+
+  const legs = finalPath.path.map(leg => ({
+    boardStop: stopsById[leg.from],
+    alightStop: stopsById[leg.to],
+    route: leg.route
+  }))
+
+
+  return {
+    success: true,
+    startCoords: { lat: startLat, lon: startLon },
+    endCoords: { lat: endLat, lon: endLon },
+    legs: legs // with our hydrated stop objects
+  }
+
 }
 
 function getNearestStops(lat, lon, stops, count) { // self explanatory
