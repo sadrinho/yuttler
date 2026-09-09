@@ -74,10 +74,7 @@ const YALE_PLACES = [
   { name: 'Yale University Art Gallery', aliases: ['yuag', 'art gallery'], lat: 41.3084354, lon: -72.9308795 },               
 ] 
 
-const stopsById = {} // builds a lookup object for later o(1) lookup of stops by id number
-for(const stop of stops) {
-  stopsById[stop.id] = stop 
-}
+
 
 function buildGraph(routes) { // given an array of route objects, builds a graph with the following structure: 
 // nodes: {"#55": [ {to: "56", route: routeA}, {to: "57", route: routeA} ]
@@ -88,7 +85,7 @@ function buildGraph(routes) { // given an array of route objects, builds a graph
   for(const route of routes) {
 
     for(let stop = 0; stop < route.stops.length; stop++) {
-
+      
       const stopKey = route.stops[stop]
       if(!graph[stopKey]) { graph[stopKey] = [] } // if we haven't already initialized the value corresponding to our stop's key as an array, do so now
       for(let nextStop = stop + 1; nextStop < route.stops.length; nextStop++) {
@@ -189,15 +186,20 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
   
   }
 
+  const stopsById = {} // builds a lookup object for later o(1) lookup of stops by id number
+  for(const stop of stops) {
+    stopsById[stop.id] = stop 
+  }
+
   // find the 5 nearest stops to each location
   const startCandidates = getNearestStops(startLat, startLon, stops, 5)
   const endCandidates = getNearestStops(endLat, endLon, stops, 5)
 
-  const graph = buildGraph(routes) 
+  const graph = buildGraph(routes.filter(route => route.active)) // we only use routes which are marked as active
   // builds our graph based on our routes + stops; see buildGraph implementation for more details
 
   const candidates = [] 
-  // candidates will later store every findPath(..., startStop, endStop) result "path" as { path, walkDistance: startStop.distance + endStop.distance }
+  // candidates will later store every findPath(graph, startStopId, endStopId) result "path" as { path, walkDistance: startStop.distance + endStop.distance }
   // we store walkdistance for our tiebreak, which is based on overall lowest walking distance between our start + end locations and their respective stops
 
   // for every combo of start + end stops (25 total)
@@ -212,7 +214,7 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
 
   if (candidates.length === 0){
     return { success: false, message: "No route found" }
-  }
+  } 
 
   // we now have our populated candidates array. we find the best option (if it exists) based on minimum legs, and as a tiebreaker, least walking distance
 
