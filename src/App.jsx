@@ -87,19 +87,24 @@ function App() {
   const [routes, setRoutes] = useState([]);
   const [buses, setBuses] = useState([]);
   const [boardEtas, setBoardEtas] = useState([]);
+  const [currentLeg, setCurrentLeg] = useState(0); // used to determine what leg of a trip a user is on (i.e. for direct trips, remains at 0)
 
   const [tripResult, setTripResult] = useState(null);
   const [startCoords, setStartCoords] = useState(null);
   const [endCoords, setEndCoords] = useState(null);
   const [boardedBusId, setBoardedBusId] = useState(null); // remains null until we board a bus
+
   const [darkMode, setDarkMode] = useState(false);
+
+  const leg = tripResult?.legs?.[currentLeg] ?? null // this replaced the variable tripResult in previous versions, to handle multiple legs in a tripresult
+
 
   // relevantEtas = sorted list of soonest arriving bus etas on our route
   // when we have no tripResult, relevantEtas === []
   
-  const relevantEtas = tripResult?.route // valid trip? has route?
+  const relevantEtas = leg?.route // valid leg? has route?
     ? boardEtas 
-      .filter((eta) => eta.route === tripResult.route.id) // we filter for routes only relevant to our trip result
+      .filter((eta) => eta.route === leg.route.id) // we filter for routes only relevant to our leg
       .sort((a, b) => a.avg - b.avg) // sorts where a (eta obj 1)'s avg min comes before b's avg min
     : []
 
@@ -141,12 +146,14 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!tripResult || !tripResult.success || !tripResult.boardStop) {
+    if (!tripResult || !tripResult.success || !leg) {
       setBoardEtas([]);
       return;
     }
 
-    const stopId = boardedBusId? tripResult.alightStop.id : tripResult.boardStop.id;
+    const stopId = boardedBusId
+      ? leg.alightStop.id 
+      : leg.boardStop.id;
 
     function fetchETA() {
       fetch(`${import.meta.env.VITE_PROXY_URL}/eta/${stopId}`) // fetches etas for our stopID
@@ -162,9 +169,10 @@ function App() {
     const intervalId = setInterval(fetchETA, 30000); // 30s interval for updates
 
     return () => clearInterval(intervalId);
-  }, [tripResult, boardedBusId]); // effect re-runs when tripResult updates or when our boardedBus updates (this usually should be whenever we select "im on board")
+  }, [tripResult, currentLeg, boardedBusId]); // effect re-runs when tripResult updates, when we change legs, or when our boardedBus updates (this usually should be whenever we select "im on board")
 
   function handleSearch() {
+    setCurrentLeg(0) // clear our leg index
     setTripResult(null); // clear previous result first
     setBoardedBusId(null) // reset boarding status
 
@@ -188,14 +196,19 @@ function App() {
     setTripResult(result);
   }
 
+  function handleAlight() { // called when a user gets off their current bus to alight stops
+    setBoardedBusId(null)
+    setCurrentLeg(currentLeg + 1)
+  }
+
   let stopsRemaining = null
 
-  if(tripResult?.success && tripResult.boardStop && trackedBus) // trackedBus guard incase no bus matches and therefore no etas
+  if(tripResult?.success && leg && trackedBus) // trackedBus guard incase no bus matches and therefore no etas
   {
-    const targetStop = boardedBusId? tripResult.alightStop : tripResult.boardStop // switches target calculation between "stops to get on" and "stops to get off"
-    const targetIndex = tripResult.route.stops.indexOf(targetStop.id)
-    const busIndex = tripResult.route.stops.indexOf(trackedBus.lastStop)
-    const routeLen = tripResult.route?.stops?.length
+    const targetStop = boardedBusId? leg.alightStop : leg.boardStop // switches target calculation between "stops to get on" and "stops to get off"
+    const targetIndex = leg.route.stops.indexOf(targetStop.id)
+    const busIndex = leg.route.stops.indexOf(trackedBus.lastStop)
+    const routeLen = leg.route?.stops?.length
     stopsRemaining = (busIndex === -1 || targetIndex === -1 || !routeLen)
     ? null
     : (targetIndex - busIndex + routeLen) % routeLen
