@@ -46,13 +46,20 @@ const destinationIcon = makeIcon('orange')
     // {success: true, boardStop, alightSTop, route} = a valid trip
 function Map( { stops, tripResult, routes, darkMode, buses }) {
 
-  // if tripResult is valid, we store only that route (one element array). else, we store all routes. this helps with drawing polylines
-  const routesToDraw = (tripResult && tripResult.success && tripResult.boardStop)
-    ? routes.filter(route => route.id === tripResult.route.id ) // filters out all routes whose id doesn't match the tripResult's route ID (i.e. every route but one, atm)
+  // we use a Set because lookup is o(1), we don't have any duplicates, and it makes sense to key our routes by insertion order
+  const tripRouteIds = new Set(tripResult?.legs?.map(leg => leg.route.id)) 
+  // we create a new Set tripRouteIds such that every item in the set is the ID of a route from each of our legs
+  // also, if legs? returns null, set becomes empty set []
+
+  // if our tripResult and legs are valid, we store only those routes. else, we store all routes. this helps with drawing polylines
+  const routesToDraw = tripRouteIds.size > 0
+    ? routes.filter(route => tripRouteIds.has(route.id)) // filters for ids in route matching our tripRouteIds
     : routes
 
-  const busesToDraw = (tripResult && tripResult.success && tripResult.boardStop)
-    ? buses.filter(bus => bus.route === tripResult.route.id )
+
+  // same logic as above, but for storing all the bus objects that we have to draw
+  const busesToDraw = tripRouteIds.size > 0
+    ? buses.filter(bus => tripRouteIds.has(bus.route))
     : buses
 
   const routesById = {} // object mapping route id to route for instant lookup when drawing buses
