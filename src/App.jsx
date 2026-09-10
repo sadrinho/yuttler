@@ -3,7 +3,7 @@ import { planTrip } from "./tripPlanner";
 import Autocomplete from "./Autocomplete";
 import Map from "./Map";
 
-function ResultsCard({ result, boardEtas, relevantEtas, trackedBus, onBoard, boarded, stopsRemaining }) {
+function ResultsCard({ result, leg, currentLeg, totalLegs, relevantEtas, trackedBus, onBoard, onAlight, boarded, stopsRemaining, boardEtas }) {
   if (!result) return <p>Enter a start and end location above</p>;
   if (!result.success) return <p>{result.message}</p>;
   if (result.walkOnly) {
@@ -18,37 +18,49 @@ function ResultsCard({ result, boardEtas, relevantEtas, trackedBus, onBoard, boa
       </div>
     );
   }
+
+  // up until this point, we were operating on the result as a whole; below this point, we operate on each leg
   
   return (
     <div>
-      {boarded? // user is on board
+
+      {boarded? // user's boarded a bus?
       (
         <>
           <p> 
-            Currently riding the <strong>{result.route.name}</strong>. {/* TODO: verify transfer logic */}
+            Currently riding the <strong>{leg.route.name}</strong>. {/* TODO: verify transfer logic */}
           </p>
           <p>
-          Get off at <strong>{result.alightStop.name}</strong>.
+          Get off at <strong>{leg.alightStop.name}</strong>.
           </p>
           <p>
             {stopsRemaining} stops remaining.
           </p>
+          <p> {/* if the user is within a reasonable distance of their alight stop, and they are not on the last leg, we display this button */}
+            {stopsRemaining !== null && stopsRemaining <= 4 && currentLeg !== (totalLegs - 1)  && (
+              <button onClick={onAlight}>I'm off</button> // manually triggers logic dictating leg switch
+            )}
+          </p>
         </>
       )
-      : relevantEtas.length === 0 ? ( // user is not on board, no relevantEtas for boardStop
+
+      // user is not on board, and NO buses (relevantEtas) are incoming for boardStop
+      : relevantEtas.length === 0 ? ( 
         <p>
           {" "}
           No buses currently inbound for{" "}
-          <strong>{result.boardStop.name}.</strong>{" "}
+          <strong>{leg.boardStop.name}.</strong>{" "}
         </p> // TODO: later, suggest alternative stops or pull nearby stops
-      ) : // user is not on board but buses incoming for boardStop 
+      ) 
+      
+      : // user is not on board, but buses ARE incoming for boardStop 
       (
         <>
           <p>
-            Walk to <strong>{result.boardStop.name}</strong>
+            Walk to <strong>{leg.boardStop.name}</strong>
           </p>
           <p>
-            Board the <strong>{result.route.name}</strong>
+            Board the <strong>{leg.route.name}</strong>
           </p>
           <p>{stopsRemaining} stops until you board bus <strong>{trackedBus?.name}</strong></p>
         
@@ -96,7 +108,8 @@ function App() {
 
   const [darkMode, setDarkMode] = useState(false);
 
-  const leg = tripResult?.legs?.[currentLeg] ?? null // this replaced the variable tripResult in previous versions, to handle multiple legs in a tripresult
+  const leg = tripResult?.legs?.[currentLeg] ?? null // this is the leg OBJECT, not the index (i.e. currentLeg, which is an index)
+  // this replaced the variable tripResult in previous versions, to handle multiple legs in a tripresult
 
 
   // relevantEtas = sorted list of soonest arriving bus etas on our route
@@ -247,13 +260,17 @@ function App() {
       </div>
 
       <ResultsCard 
-        result={tripResult} 
-        boardEtas={boardEtas} 
+        result={tripResult} // really only useful for checking if walk-only or if null bc guard rn checks if tripresult is null, not leg (but if tripresult is null that should imply the latter is null too)
+        leg={leg} // our leg object
+        currentLeg={currentLeg} // our leg index
+        totalLegs={tripResult?.legs?.length ?? 0} // incase somethings wrong w/ tr or legs, we pass 0
         relevantEtas={relevantEtas} 
         trackedBus={trackedBus} 
         onBoard={() => setBoardedBusId(trackedBusId)} // resultsCard tells react to call this when we trigger onBoard
+        onAlight={handleAlight} // we call handleAlight when we trigger onAlight
         boarded={boardedBusId !== null} // true if boarded, false otherwise
         stopsRemaining= {stopsRemaining}
+        boardEtas={boardEtas} // TODO: did i deprecate this? figure out what this was supposed to be
       />
     </div>
   );
