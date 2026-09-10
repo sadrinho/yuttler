@@ -3,7 +3,7 @@ import { planTrip } from "./tripPlanner";
 import Autocomplete from "./Autocomplete";
 import Map from "./Map";
 
-function ResultsCard({ result, leg, currentLeg, totalLegs, relevantEtas, trackedBus, onBoard, onAlight, boarded, stopsRemaining, boardEtas }) {
+function ResultsCard({ result, leg, currentLeg, totalLegs, relevantEtas, trackedBus, onBoard, onAlight, boarded, stopsRemaining }) {
   if (!result) return <p>Enter a start and end location above</p>;
   if (!result.success) return <p>{result.message}</p>;
   if (result.walkOnly) {
@@ -270,7 +270,6 @@ function App() {
         onAlight={handleAlight} // we call handleAlight when we trigger onAlight
         boarded={boardedBusId !== null} // true if boarded, false otherwise
         stopsRemaining= {stopsRemaining}
-        boardEtas={boardEtas} // TODO: did i deprecate this? figure out what this was supposed to be
       />
     </div>
   );
