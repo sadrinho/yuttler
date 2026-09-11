@@ -108,7 +108,6 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
 
         {/* draws the 4 pins denoting your specific route start/stop and bus stops */}
         {tripResult && tripResult.success && ( // order matters incase tripResult = null.
-        // we use the last && to ensure that it only evaluates when tripResult.success is true, and the same is true for tripResult
             <>
                 <Marker
                     position={[tripResult.startCoords.lat, tripResult.startCoords.lon]}
@@ -122,25 +121,32 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
                         <Popup>Destination</Popup> 
                 </Marker>
 
-                {tripResult.boardStop && ( // excludes walkOnly case
+                {tripResult.legs && ( // excludes walkOnly case
                     <>
                     <Marker
-                            position={[tripResult.boardStop.lat, tripResult.boardStop.lon]}
-                            icon={boardAlightIcon}>
-                            <Popup>Board at: {tripResult.boardStop.name}</Popup> 
+                            position={[tripResult.legs[0].boardStop.lat, tripResult.legs[0].boardStop.lon]}
+                            icon={boardAlightIcon}
+                    >
+                            <Popup>Board at: {tripResult.legs[0].boardStop.name}</Popup> 
                     </Marker>
 
-                    <Marker
-                            position={[tripResult.alightStop.lat, tripResult.alightStop.lon]}
-                            icon={boardAlightIcon}>
-                            <Popup>Get off at: {tripResult.alightStop.name}</Popup> 
-                    </Marker>
+                    {tripResult.legs.map((leg, i) => ( // index i starts at 0, leg = leg object
+                      <Marker 
+                        key={leg.alightStop.id}
+                        position={[leg.alightStop.lat, leg.alightStop.lon]}
+                        icon={boardAlightIcon}
+                      >
+                        <Popup>
+                          {(i === (tripResult.legs.length - 1)) // are we at the final stop?
+                            ? <p>Get off at: {leg.alightStop.name}</p> 
+                            : <p>Transfer at: {leg.alightStop.name}</p>
+                          }
+                        </Popup>
+                      </Marker>
+                    ))}
                     </>
                 )}
-
-
-    
-            </> // the <>...</> is a fragment, basically an invisible wrapper since && can only produce one element, but we ewant to render 4. we wrapthem 
+            </> 
 
         )} 
 

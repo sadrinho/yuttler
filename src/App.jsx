@@ -71,7 +71,7 @@ function ResultsCard({ result, leg, currentLeg, totalLegs, relevantEtas, tracked
           </p>
         ))}
 
-        {stopsRemaining !== null && stopsRemaining <= 30 && // TODO: change 30 to realistic number after testing
+        {stopsRemaining !== null && stopsRemaining <=4 && // TODO: potentially change 4 to realistic number after beta testing
         (
           <button onClick={onBoard}>I'm on board</button>
         )
