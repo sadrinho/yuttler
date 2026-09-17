@@ -74,9 +74,9 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
       <TileLayer 
         key={darkMode ? 'dark' : 'light'} // force React to remount on change, safeguard
         url={darkMode
-          ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" // map imagery source; CARTO's positron
+          ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${import.meta.env.VITE_CARTO_API_KEY}` // map imagery source; CARTO's positron
           // ? "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png" // possible 2nd choice in case Carto's is too dark. requires API key though
-          : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" }
+          : `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${import.meta.env.VITE_CARTO_API_KEY}` }
         attribution='&copy; OpenStreetMap contributors &copy; CARTO' // legal requirement. 
       />
 
