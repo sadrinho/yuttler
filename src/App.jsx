@@ -162,6 +162,7 @@ function App() {
 
   useEffect(() => {
     function fetchBuses() {
+      if (document.hidden) return; // tab's in the background, nobody's looking so skip this poll
       fetch(`${import.meta.env.VITE_PROXY_URL}/buses`)
         .then((r) => r.json())
         .then((data) => {
@@ -173,8 +174,12 @@ function App() {
     fetchBuses();
 
     const intervalId = setInterval(fetchBuses, 10000); //10000ms = 10s interval for now
+    document.addEventListener("visibilitychange", fetchBuses); // fetch right away when the tab comes back so positions aren't up to 10s stale
 
-    return () => clearInterval(intervalId); // stops timer when the component unmounts
+    return () => {
+      clearInterval(intervalId); // stops timer when the component unmounts
+      document.removeEventListener("visibilitychange", fetchBuses);
+    };
   }, []);
 
   useEffect(() => {
@@ -189,6 +194,7 @@ function App() {
       : leg.boardStop.id;
 
     function fetchETA() {
+      if (document.hidden) return; // same as buses, don't poll a background tab
       fetch(`${import.meta.env.VITE_PROXY_URL}/eta/${stopId}`) // fetches etas for our stopID
         .then((r) => r.json())
         .then((data) => {
@@ -206,8 +212,12 @@ function App() {
     fetchETA(); // immediate so it's not blank for the first 30s
 
     const intervalId = setInterval(fetchETA, 30000); // 30s interval for updates
+    document.addEventListener("visibilitychange", fetchETA); // refresh etas right away when the tab comes back
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", fetchETA); // otherwise old listeners pile up and keep fetching old stops every time this effect re-runs
+    };
   }, [tripResult, currentLeg, boardedBusId]); // effect re-runs when tripResult updates, when we change legs, or when our boardedBus updates (this usually should be whenever we select "im on board")
 
   function handleSearch() {
