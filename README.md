@@ -8,6 +8,8 @@ Built by reverse-engineering the undocumented API behind Yale's Downtowner shutt
 
 [Visit Yuttler](https://www.yuttler.com)
 
+**Note: The website is currently hosted on Render's free tier, which means the back end takes ~30-50 seconds to spin up following inactivity -- as of 9/22, I'm working to get funding for a higher tier! Expect to see 0 stops/routes/buses loaded until this brief period is over.**
+
 ## Features
 
 **Multi-leg trip planning.** The planner runs a breadth-first search over a graph of the shuttle system, so trips requiring a transfer are found automatically. A direct trip is just a path of length 1.
