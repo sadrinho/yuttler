@@ -28,3 +28,4 @@ dist-ssr
 .env
 
 mailmap.txt
+LAUNCH_SPEC.md

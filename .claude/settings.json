@@ -1,0 +1,5 @@
+{
+  "permissions": {
+    "deny": ["Read(./.env)", "Read(./proxy/.env)", "Bash(git push:*)"]
+  }
+}
