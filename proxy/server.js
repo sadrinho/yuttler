@@ -21,6 +21,36 @@ function scrubKey(text) { // had an issue where errors would reveal the API key;
     : str
 }
 
+// in-memory cache for downtowner responses, so hundreds of polling clients become a handful of upstream requests
+const cache = new Map() // key -> { data, fetchedAt }
+const inFlight = new Map() // key -> promise for an upstream fetch that's currently running
+
+async function cachedFetch(key, url, ttlMs) { // returns data for key, only hitting url if our copy is older than ttlMs
+  const entry = cache.get(key)
+  if (entry && Date.now() - entry.fetchedAt < ttlMs) return entry.data // fresh enough, skip upstream
+  if (inFlight.has(key)) return inFlight.get(key) // someone's already fetching this; wait on their result
+
+  const promise = (async () => {
+    try {
+      console.log('Upstream fetch:', key)
+      const response = await fetch(url, { timeout: 5000 }) // give up after 5s so one hung request can't stall every waiting client
+      if (!response.ok) throw new Error(`status ${response.status}`)
+      const data = await response.json()
+      cache.set(key, { data, fetchedAt: Date.now() }) // only successes get cached
+      return data
+    } catch (err) {
+      if (!entry) throw err // nothing stale to fall back on
+      console.error(`Upstream fetch failed for ${key}, serving stale:`, scrubKey(err.message))
+      entry.fetchedAt = Date.now() // pretend it's fresh so we retry once per ttl, not on every request
+      return entry.data
+    } finally {
+      inFlight.delete(key) // done either way; next expiry starts a new fetch
+    }
+  })()
+  inFlight.set(key, promise)
+  return promise
+}
+
 
 // note: .get requests are done in order, top to bottom, by matching; can be important if using some sort of wildcard operator
 
@@ -41,8 +71,7 @@ app.get('/', (req, res) => res.send(`what's up chat, we're live`)) // default pa
 // req is the incoming request
 // res is our response
 app.get('/stops', async (req, res) => {
-  const response = await fetch('https://yale.downtownerapp.com/routes_stops.php') // fetch and wait
-  const data = await response.json() // wait for raw response, then parse it as JSON
+  const data = await cachedFetch('stops', 'https://yale.downtownerapp.com/routes_stops.php', 60 * 60 * 1000) // fetch and wait (cached for 1h; cachedFetch parses the JSON)
   res.json(data) // send the data back
 })
 
@@ -55,8 +84,7 @@ app.get('/stops', async (req, res) => {
         - forwards it to our react app
 */
 app.get('/routes', async (req, res) => {
-  const response = await fetch('https://yale.downtownerapp.com/routes_routes.php?inactive=true')
-  const data = await response.json()
+  const data = await cachedFetch('routes', 'https://yale.downtownerapp.com/routes_routes.php?inactive=true', 60 * 60 * 1000) // cached for 1h
   res.json(data)
 })
 
@@ -65,9 +93,8 @@ app.get('/routes', async (req, res) => {
 app.get('/eta/:stopId', async (req, res) => {
   const stopId = req.params.stopId // Express captures this from the URL's path
   if (!/^\d+$/.test(stopId)) return res.status(400).json({ error: 'Invalid stop id' }) //safeguard for non-integer stopid param
-  const response = await fetch(`https://yale.downtownerapp.com/routes_eta.php?stop=${stopId}`) // we use route parameters since we don't want to hardcode a single stop w/ etas, nor load all the stops all the time.
+  const data = await cachedFetch(`eta:${stopId}`, `https://yale.downtownerapp.com/routes_eta.php?stop=${stopId}`, 15 * 1000) // we use route parameters since we don't want to hardcode a single stop w/ etas, nor load all the stops all the time. cached 15s per stop
   // note to self: backticks, not quotes!! 
-  const data = await response.json()
   res.json(data)
 })
 
@@ -150,8 +177,7 @@ try {
 }})
 
 app.get('/buses', async (req, res) => {
-  const response = await fetch('https://yale.downtownerapp.com/routes_buses.php')
-  const data = await response.json()
+  const data = await cachedFetch('buses', 'https://yale.downtownerapp.com/routes_buses.php', 5 * 1000) // cached 5s
   res.json(data)
 })
 
