@@ -219,6 +219,8 @@ It covers the zero-length path case: when the same stop is the nearest to both e
 
 **Adjustable pins.** Let users drag their start/end pins when the geocoded location is inaccurate.
 
+**Drop a pin on the map.** Tap the map to set a start or end point instead of typing an address. Also costs zero geocoding requests.
+
 **Service alerts.** Surface error flags from Downtowner's `routes_announcements.php` endpoint (detours, suspended routes, etc.).
 
 **Generate-and-score.** The architecture for making route choice reflect real time rather than a proxy for it. BFS and the graph do *candidate generation* — cheap and structural. A separate pass does *scoring* — expensive, using live ETAs. Keeping them separate means the scoring function can change without touching the traversal.
