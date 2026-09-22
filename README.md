@@ -18,7 +18,7 @@ Built by reverse-engineering the undocumented API behind Yale's Downtowner shutt
 
 **Turn-by-turn ride guidance.** The results card shows only what you need to do right now: walk to a stop, board a named bus, ride until your alight stop, transfer, repeat. "I'm on board" and "I'm off" advance the state machine, and a live stop counter tracks how far your bus is from where you need it.
 
-**Autocomplete search.** Campus landmarks resolve instantly from a curated table with aliases (`akw`, `som`, `div school`). Anything else is geocoded through LocationIQ, with Nominatim as a fallback (non-autocomplete) provider, both bounded roughly to the New Haven area.
+**Autocomplete search.** Campus landmarks resolve instantly from a curated table with aliases (`akw`, `som`, `div school`). Anything else is geocoded through LocationIQ, bounded roughly to the New Haven area, with results cached on the proxy for 24 hours. A Nominatim fallback exists but is off by default (see below).
 
 **Interactive map** (Leaflet + OpenStreetMap data). Every route drawn in its official color; after a search the map narrows to just the routes your trip uses, with pins for your start, each boarding stop, each transfer, and your destination. Light and dark tiles.
 
@@ -40,6 +40,27 @@ The Downtowner web app exposes four undocumented endpoints, discovered via brows
 Direct browser requests to those endpoints are blocked by CORS, so a small Express server sits between the React app and Downtowner and forwards requests on its behalf.
 
 That started as a CORS workaround, but the proxy is permanent for a second reason: geocoding requires a LocationIQ API key, and any credential shipped in client-side code is visible to anyone who opens DevTools. The proxy is the only place a secret can actually stay secret. It's also the natural chokepoint for rate limiting, caching, and provider fallback — anything that's a policy about *how* the app talks to third parties belongs there rather than in the UI.
+
+### Caching and failure handling
+
+Every open tab polls `/buses` every 10 seconds and `/eta/:stopId` every 30. Without caching, a few hundred users would mean tens of requests per second from one IP to an undocumented API, which is our only data source. So the proxy keeps an in-memory cache (`Map`s, no library):
+
+| Route | Cache key | TTL |
+|---|---|---|
+| `/buses` | single entry | 5s |
+| `/eta/:stopId` | per stop | 15s |
+| `/stops`, `/routes` | single entry each | 1 hour |
+| `/autocomplete` | normalized query | 24h (1h for empty results) |
+
+- **Request coalescing.** Concurrent requests for the same expired key share one in-flight upstream fetch instead of each firing their own.
+- **Serve stale on failure.** If Downtowner fails and an older copy exists, the proxy returns it and waits a full TTL before retrying. With nothing cached, it responds `502 { error: 'Upstream unavailable' }` and stays up.
+- **Only successes are cached.** Upstream fetches time out after 5 seconds, so one hung request can't stall every waiting client.
+- **LocationIQ specifics.** Queries are lowercased and whitespace-collapsed before lookup. The cache is capped at 5,000 entries with least-recently-used eviction, and the 24h TTL stays under LocationIQ's 48h free-plan caching limit.
+- Each real upstream call logs `Upstream fetch: <key>`, so caching is visible in the proxy's terminal.
+
+**Nominatim is off by default.** Its usage policy caps clients at 1 request/second and forbids autocomplete use, so under load a LocationIQ outage spilling over to it would risk an IP ban. When LocationIQ fails, `/autocomplete` returns `[]`. Set `ENABLE_NOMINATIM=true` to re-enable the fallback.
+
+The frontend treats any non-array response as a failure and keeps its previous state (stale bus positions beat a crash). A failed ETA fetch shows `...` in the results card rather than claiming no buses are inbound.
 
 ### Trip planning: stops are nodes, rides are edges
 
@@ -109,46 +130,45 @@ The UI splits along the same seam. `App.jsx` owns `currentLeg` as state and deri
 
 **Frontend:** React (Vite), react-leaflet / Leaflet, CARTO basemap tiles over OpenStreetMap data
 **Proxy:** Node.js, Express, node-fetch
-**Geocoding:** curated landmark table → LocationIQ → Nominatim fallback
+**Geocoding:** curated landmark table → LocationIQ (→ Nominatim fallback, off by default)
 
 ## Running locally
 
 Requires Node.js (LTS). Two processes, two terminals, two `.env` files.
 
-**1. Configure the proxy.** Create `proxy/.env`:
+**1. Configure the proxy.** Copy `proxy/.env.example` to `proxy/.env` and fill it in:
 
 ```
 LOCATIONIQ_KEY=your_locationiq_key
 ALLOWED_ORIGIN=http://localhost:5173
 PORT=3001
+ENABLE_NOMINATIM=
 ```
 
-`ALLOWED_ORIGIN` is a comma-separated list and is **required** — the server reads it at startup and will not boot without it. `LOCATIONIQ_KEY` is free-tier; without it, autocomplete falls through to Nominatim for every query.
+`ALLOWED_ORIGIN` is a comma-separated list with no spaces after the commas, and is **required** — the server reads it at startup and will not boot without it. `LOCATIONIQ_KEY` is free-tier; without it, place autocomplete returns no results (landmarks still work). `PORT` is optional (defaults to 3001; most hosts inject it). Leave `ENABLE_NOMINATIM` unset unless you specifically want the Nominatim fallback.
 
 **2. Configure the frontend.** Create `.env` in the project root:
 
 ```
 VITE_PROXY_URL=http://localhost:3001
+VITE_CARTO_API_KEY=your_carto_key
 ```
 
-Vite only exposes variables prefixed with `VITE_` to client code, so the name matters.
+Vite only exposes variables prefixed with `VITE_` to client code, so the names matter. They're also baked in at **build time**, so for production, set `VITE_PROXY_URL` to the production proxy URL *before* running `npm run build`. Anything `VITE_`-prefixed ends up in the public bundle.
 
-**3. Start the proxy** (port 3001):
-
-```
-cd proxy
-npm install
-node server.js
-```
-
-**4. Start the React app** (port 5173):
+**3. Install and start both** (React on port 5173, proxy on 3001):
 
 ```
 npm install
-npm run dev
+cd proxy && npm install && cd ..
+npm start
 ```
 
-Then open `http://localhost:5173`.
+`npm start` runs the Vite dev server and the proxy together via `concurrently`. Then open `http://localhost:5173`.
+
+### Deploying
+
+The production proxy needs `LOCATIONIQ_KEY`, `ALLOWED_ORIGIN` (including the production frontend domain), and `PORT` if the host doesn't inject it. `.env` and `proxy/.env` are gitignored and must never be committed; `proxy/.env.example` lists the variable names only.
 
 ## Tests
 
@@ -160,11 +180,18 @@ node graph.test.mjs
 
 27 assertions over hand-verifiable toy routes rather than live data, covering edge counts and shape, adjacency accumulation when a stop is served by two routes, final stops getting an empty-but-present adjacency entry, direct and transfer paths, unreachable destinations, missing stop IDs, start-equals-end, and number/string ID mismatches. One test deliberately declares a two-hop route before a one-hop route, to catch a search that returns first-found rather than shortest.
 
+`planTrip` has its own harness:
+
+```
+node planTrip.test.mjs
+```
+
+It covers the zero-length path case: when the same stop is the nearest to both ends, `planTrip` must return "No route found" rather than `success: true` with no legs, and a real path must still win when zero-length candidates exist alongside it.
+
 ## Known limitations
 
 - **No loop wrap-around.** Routes are circular, but `route.stops` is a flat array and edges only run forward through it. A trip that crosses the loop's seam returns "no route found" even when a bus makes that exact trip. This is the highest-impact known bug.
 - **No walk edges between nearby stops.** Directional variants like `130 Prospect Street (N)` and `(S)` are distinct IDs and unconnected in the graph, so a transfer that amounts to crossing the street is invisible to the search.
-- **Zero-length paths aren't rejected.** If the same stop lands in both the start and end candidate lists, the search returns an empty path, which sorts to the front as "fewest legs" and produces a `success: true` result with no legs. The results card and the map both assume at least one leg and will throw on it.
 - **No terminal state.** On the final leg the "I'm off" button is suppressed, so there's no way to mark a trip complete.
 - **Proximity thresholds are guesses.** The `stopsRemaining <= 4` gate on both the board and alight buttons was never calibrated against real values.
 - **No ETA validation.** A trip can be planned whose boarding or alighting stop has no inbound buses, or only very distant ones. The planner doesn't check whether a structurally valid route is actually rideable.
@@ -172,14 +199,36 @@ node graph.test.mjs
 - **Inactive routes are drawn.** The graph filters to `route.active`, but the map's default view renders every route returned by `?inactive=true`, including ones nobody is currently driving.
 - **Autocomplete race condition.** A stale geocoder response can append to the suggestion list after it's no longer relevant.
 - **Dead code.** `greenIcon` is declared in `Map.jsx` and unused; `stops` is passed to `Map` and never read.
+- **No retry for stops/routes.** They're fetched once on load; if that fails (e.g. the proxy is cold-starting on Render), the app shows 0 stops until the page is reloaded.
+- **ETA cache is uncapped.** The proxy keeps one entry per distinct stop ID requested. Only a concern under abuse; there's no per-IP rate limiting yet.
+- **Existing lint errors.** ESLint flags two synchronous `setState` calls inside effects (`App.jsx`, `Autocomplete.jsx`) and a missing `leg` dependency.
 
 ## Roadmap
 
-**Visual and UX overhaul.** The headline item: make it look like an actual app. Fullscreen map or map-with-pane, fully responsive mobile web, the user's live location on the map, and real error and empty states for when geocoding fails, no buses are running, or the proxy is down.
+### V4 (shipping version)
+
+**Visual and UX overhaul.** The headline item: make it look like an actual app.
+- A fullscreen map (Google Maps style) or a map with a side pane, fully responsive on mobile web.
+- The user's live location on the map.
+- Toggle which routes are shown, or isolate a single route.
+- Real error and empty states: what the user sees when geocoding fails, no buses are running, or the proxy is down. This matters more as the app gets more real.
+
+**Proxy caching.** ✅ Done — see [Caching and failure handling](#caching-and-failure-handling).
+
+### If time allows
+
+**Adjustable pins.** Let users drag their start/end pins when the geocoded location is inaccurate.
+
+**Service alerts.** Surface error flags from Downtowner's `routes_announcements.php` endpoint (detours, suspended routes, etc.).
 
 **Generate-and-score.** The architecture for making route choice reflect real time rather than a proxy for it. BFS and the graph do *candidate generation* — cheap and structural. A separate pass does *scoring* — expensive, using live ETAs. Keeping them separate means the scoring function can change without touching the traversal.
 
 Scoring is possible because `/eta/:stopId` returns an estimate for every bus servicing that stop, not just imminent ones, so a full itinerary can be timed by chaining calls: when bus X reaches your boarding stop, when that same bus reaches the transfer, which leg-2 bus arrives after that, and when it reaches your destination. ETAs are snapshots and error compounds across legs, so late-leg estimates are soft.
+
+Problems scoring should address:
+- **Rideability.** A structurally valid trip can have no buses inbound at the boarding or alight stop, or only very late ones. Scoring should time the whole itinerary once a match is found and fall back to the next candidate if it isn't actually good.
+- **Better transfer stops.** A transfer stop that doesn't share a route with the first leg, but is a short walk from one that does, is currently invisible (see walk edges below).
+- **Slower equivalent routes.** Reported case: a direct Blue Line trip existed, but the planner returned a Red Line trip that also worked and took longer. Both are one leg, so they tie on boardings and the walking-distance tiebreak picks between them without looking at time. Scoring by chained ETAs would prefer the faster one *if* it's among the candidates. If it isn't (e.g. the Blue trip crosses the loop's seam, or BFS found only the Red path for that stop pair), it also needs wrap-around and wide-candidate search.
 
 **Wide-candidate BFS.** Required for scoring to actually *choose* rather than just display. Same graph, same edges; the search drops its visited set and enumerates multiple paths, bounded by finishing one level past the depth at which the destination is first reached. The cost that bounds this design is scoring, not searching — each candidate costs roughly one proxy call per stop.
 
@@ -187,7 +236,7 @@ Scoring is possible because `/eta/:stopId` returns an estimate for every bus ser
 
 **Walk edges between nearby stops**, also landing with scoring. A walk edge costing 1 boarding would make crossing the street look as expensive as riding a bus, and a genuinely zero-cost edge breaks the uniform-cost assumption BFS depends on. This is the Dijkstra threshold.
 
-**Efficiency.** Skip the geocoder when the landmark table already answered — typing "beinecke" currently gets an instant local match *and* burns a LocationIQ request. And cache `query → result` on the proxy, since autocomplete queries repeat enormously and every prefix of a word is its own query.
+**Efficiency.** Skip the geocoder when the landmark table already answered — typing "beinecke" currently gets an instant local match *and* costs a LocationIQ request (now cached on the proxy, but still one per distinct query).
 
 ## A Note on the Usage of AI/LLMs
 
