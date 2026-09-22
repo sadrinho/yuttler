@@ -71,8 +71,13 @@ app.get('/', (req, res) => res.send(`what's up chat, we're live`)) // default pa
 // req is the incoming request
 // res is our response
 app.get('/stops', async (req, res) => {
-  const data = await cachedFetch('stops', 'https://yale.downtownerapp.com/routes_stops.php', 60 * 60 * 1000) // fetch and wait (cached for 1h; cachedFetch parses the JSON)
-  res.json(data) // send the data back
+  try {
+    const data = await cachedFetch('stops', 'https://yale.downtownerapp.com/routes_stops.php', 60 * 60 * 1000) // fetch and wait (cached for 1h; cachedFetch parses the JSON)
+    res.json(data) // send the data back
+  } catch (err) { // downtowner failed and we had nothing cached to fall back on
+    console.error('Upstream fetch failed for stops:', scrubKey(err.message))
+    res.status(502).json({ error: 'Upstream unavailable' }) // 502 = the server we depend on failed, not us
+  }
 })
 
 /*
@@ -84,8 +89,13 @@ app.get('/stops', async (req, res) => {
         - forwards it to our react app
 */
 app.get('/routes', async (req, res) => {
-  const data = await cachedFetch('routes', 'https://yale.downtownerapp.com/routes_routes.php?inactive=true', 60 * 60 * 1000) // cached for 1h
-  res.json(data)
+  try {
+    const data = await cachedFetch('routes', 'https://yale.downtownerapp.com/routes_routes.php?inactive=true', 60 * 60 * 1000) // cached for 1h
+    res.json(data)
+  } catch (err) {
+    console.error('Upstream fetch failed for routes:', scrubKey(err.message))
+    res.status(502).json({ error: 'Upstream unavailable' })
+  }
 })
 
 // fetch individual stop ETAs
@@ -93,9 +103,14 @@ app.get('/routes', async (req, res) => {
 app.get('/eta/:stopId', async (req, res) => {
   const stopId = req.params.stopId // Express captures this from the URL's path
   if (!/^\d+$/.test(stopId)) return res.status(400).json({ error: 'Invalid stop id' }) //safeguard for non-integer stopid param
-  const data = await cachedFetch(`eta:${stopId}`, `https://yale.downtownerapp.com/routes_eta.php?stop=${stopId}`, 15 * 1000) // we use route parameters since we don't want to hardcode a single stop w/ etas, nor load all the stops all the time. cached 15s per stop
-  // note to self: backticks, not quotes!! 
-  res.json(data)
+  try {
+    const data = await cachedFetch(`eta:${stopId}`, `https://yale.downtownerapp.com/routes_eta.php?stop=${stopId}`, 15 * 1000) // we use route parameters since we don't want to hardcode a single stop w/ etas, nor load all the stops all the time. cached 15s per stop
+    // note to self: backticks, not quotes!! 
+    res.json(data)
+  } catch (err) {
+    console.error(`Upstream fetch failed for eta:${stopId}:`, scrubKey(err.message))
+    res.status(502).json({ error: 'Upstream unavailable' })
+  }
 })
 
 const iqURL = `https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCATIONIQ_KEY}&viewbox=-72.8084514641751%2C41.41930017433788%2C-73.02641547890617%2C41.22302882412524&bounded=1&normalizeaddress=1` //locationIQ's endpoint. see below for details
@@ -177,8 +192,13 @@ try {
 }})
 
 app.get('/buses', async (req, res) => {
-  const data = await cachedFetch('buses', 'https://yale.downtownerapp.com/routes_buses.php', 5 * 1000) // cached 5s
-  res.json(data)
+  try {
+    const data = await cachedFetch('buses', 'https://yale.downtownerapp.com/routes_buses.php', 5 * 1000) // cached 5s
+    res.json(data)
+  } catch (err) {
+    console.error('Upstream fetch failed for buses:', scrubKey(err.message))
+    res.status(502).json({ error: 'Upstream unavailable' })
+  }
 })
 
 app.use((err, req, res, next) => { // express skips everything above this and calls this when a function calls next() with an argument (next(err))
