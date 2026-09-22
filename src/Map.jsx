@@ -77,7 +77,7 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
           ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${import.meta.env.VITE_CARTO_API_KEY}` // map imagery source; CARTO's positron
           // ? "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png" // possible 2nd choice in case Carto's is too dark. requires API key though
           : `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${import.meta.env.VITE_CARTO_API_KEY}` }
-        attribution='&copy; OpenStreetMap contributors &copy; CARTO' // legal requirement. 
+        attribution='&copy; OpenStreetMap contributors &copy; CARTO | <a href="https://www.locationiq.com" target="_blank" rel="noopener noreferrer">LocationIQ.com</a>' // legal requirement. the LocationIQ part is only for their free plan, I can drop it once we upgrade
       />
 
         {routesToDraw.map(route => ( // 
