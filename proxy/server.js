@@ -150,21 +150,51 @@ const iqURL = `https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCA
 const nomURL = `https://nominatim.openstreetmap.org/search?&format=json&limit=1&viewbox=-72.8084514641751,41.41930017433788,-73.02641547890617,41.22302882412524&bounded=1` // nominatim's endpoint. note: format of viewbox coord pairs differs with locationIQ 
 const nominatimEnabled = process.env.ENABLE_NOMINATIM === 'true' // off unless explicitly set to 'true'; nominatim's policy caps us at 1 req/s and forbids autocomplete use
 
+// in-memory cache for locationIQ results, keyed by the cleaned-up query (never the url, since that has our key in it)
+const iqCache = new Map() // query -> { data, fetchedAt }. Map keeps insertion order, so the first key is always the least recently used
+const iqInFlight = new Map() // query -> promise for a locationIQ call that's currently running
+const iqTTL = 24 * 60 * 60 * 1000 // 24h; locationIQ's free plan allows caching for up to 48h
+const iqEmptyTTL = 60 * 60 * 1000 // 1h for queries with no results, in case the place shows up later
+const iqMaxEntries = 5000 // ~1KB per entry, so roughly 5MB at most
+
+async function fetchLocationIQ(query) { // one real locationIQ call, shared by everyone asking for the same query. returns results, or null if locationIQ sent an error status
+  try {
+    console.log('Upstream fetch: locationIQ') // query left out on purpose so user searches don't end up in our logs
+    const iqResponse = await fetch(`${iqURL}&q=${encodeURIComponent(query)}`, { timeout: 5000 }) // add query to iqURL. 5s timeout so one hung call can't stall everyone waiting on this query
+    if (!iqResponse.ok) {
+      // something's wrong, locationIQ sent back an error status
+      console.error('LocationIQ returned status:', iqResponse.status)
+      return null
+    }
+    const data = normalizeLocation(await iqResponse.json(), 'locationIQ')
+    iqCache.delete(query) // so the set below puts it at the back of the line
+    iqCache.set(query, { data, fetchedAt: Date.now() }) // only successes get cached
+    if (iqCache.size > iqMaxEntries) iqCache.delete(iqCache.keys().next().value) // over the cap: evict the least recently used
+    return data
+  } finally {
+    iqInFlight.delete(query) // done either way; the next miss starts a new call
+  }
+}
+
 // make a request to locationIQ's API based on a user query
 app.get('/autocomplete', async (req, res) => {
   const q = req.query.q // our search query
   if (!q) return res.json([]) // so we don't waste an API call
+  const query = q.toLowerCase().trim().replace(/\s+/g, ' ') // "Chapel  St " and "chapel st" share one cache entry
+
+  const cached = iqCache.get(query)
+  if (cached && Date.now() - cached.fetchedAt < (cached.data.length ? iqTTL : iqEmptyTTL)) {
+    iqCache.delete(query) // move it to the back of the line so popular queries never get evicted
+    iqCache.set(query, cached)
+    return res.json(cached.data)
+  }
   
   // the below block is for locationIQ
 
   try {
-  const iqResponse = await fetch(`${iqURL}&q=${encodeURIComponent(q)}`) // add query to iqURL
-  if(iqResponse.ok) {
-    const data = await iqResponse.json()
-    return res.json(normalizeLocation(data, 'locationIQ')) // send locationIQ result
-  }
-  // something's wrong, locationIQ sent back an error status
-  console.error('LocationIQ returned status:', iqResponse.status)
+  if (!iqInFlight.has(query)) iqInFlight.set(query, fetchLocationIQ(query)) // start a call unless one's already running for this query
+  const data = await iqInFlight.get(query)
+  if (data) return res.json(data) // send locationIQ result
 } catch (err) {
   // big boy error, probably network related. request never cocmpleted at all
   console.error('LocationIQ request failed:', scrubKey(err.message))
