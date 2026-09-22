@@ -15,18 +15,15 @@ function Autocomplete({ placeholder, onSelect }) {
   const justSelected = useRef(false) // so we don't burn an api call when updating input when the user makes a selection
   const [geocodedQuery, setGeocodedQuery] = useState(null) // last normalized query sent to locationIQ, so the search row hides once it's been used
 
-  function geocode(query) { // asks the proxy for places matching query and appends them under the landmark matches
+  function geocode(query) { // asks the proxy for places matching query and swaps them in for the landmark matches
     setGeocodedQuery(query.toLowerCase().trim())
 
     // request a call to either locationIQ or nominatim to geocode our input
     fetch(`${import.meta.env.VITE_PROXY_URL}/autocomplete?q=${encodeURIComponent(query)}`)
       .then(r => r.json()) // array of location results {name, lat, lon}
       .then(results => {
-        if (!Array.isArray(results)) return // e.g. { error } from the proxy's error handler; results.filter would crash, so keep the landmark matches
-        setSuggestions(prev => [
-        ...prev, // loads what was already existing in setSuggestions for this render cycle; this is always the keystroke's landmark matches
-        ...results.filter(result => !prev.some(place => place.name === result.name)) // only if no match in previous
-      ])
+        if (!Array.isArray(results)) return // e.g. { error } from the proxy's error handler; suggestions.map would crash, so keep the landmark matches
+        setSuggestions(results) // replace, don't append: landmarks + locationIQ together filled the whole screen. auto-search only runs when there are no landmark matches anyway
       })
       .catch(err => console.error('Autocomplete fetch failed:', err)) // network failure or non-JSON body
   }
