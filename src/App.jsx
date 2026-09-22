@@ -78,7 +78,6 @@ function ResultsCard({ result, leg, currentLeg, totalLegs, relevantEtas, tracked
         }
         </>
       )}
-      
     </div>
   );
 }
