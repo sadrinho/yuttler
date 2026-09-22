@@ -206,7 +206,7 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
   for (const startStop of startCandidates) {
     for (const endStop of endCandidates) {
       const path = findPath(graph, startStop.id, endStop.id)
-      if(path) { // only push when path !null
+      if(path && path.length > 0) { // only push when path !null and has at least one leg (start === end gives [], which would sort first as "fewest legs")
         candidates.push({ path, walkDistance: startStop.distance + endStop.distance}) // see candidates initialization for more details
       }
     }
