@@ -3,7 +3,7 @@ import { planTrip } from "./tripPlanner";
 import Autocomplete from "./Autocomplete";
 import Map from "./Map";
 
-function ResultsCard({ result, leg, currentLeg, totalLegs, relevantEtas, trackedBus, onBoard, onAlight, boarded, stopsRemaining }) {
+function ResultsCard({ result, leg, currentLeg, totalLegs, relevantEtas, trackedBus, onBoard, onAlight, boarded, stopsRemaining, etaFailed }) {
   if (!result) return <p>Enter a start and end location above</p>;
   if (!result.success) return <p>{result.message}</p>;
   if (result.walkOnly) {
@@ -40,6 +40,21 @@ function ResultsCard({ result, leg, currentLeg, totalLegs, relevantEtas, tracked
             {stopsRemaining !== null && stopsRemaining <= 4 && currentLeg !== (totalLegs - 1)  && (
               <button onClick={onAlight}>I'm off</button> // manually triggers logic dictating leg switch
             )}
+          </p>
+        </>
+      )
+
+      // user is not on board, and we couldn't load etas; show ... instead of wrongly saying no buses are coming
+      : etaFailed ? (
+        <>
+          <p>
+            Walk to <strong>{leg.boardStop.name}</strong>
+          </p>
+          <p>
+            Board the <strong>{leg.route.name}</strong>
+          </p>
+          <p>
+            Bus arriving in <strong>...</strong>
           </p>
         </>
       )
@@ -98,6 +113,7 @@ function App() {
   const [routes, setRoutes] = useState([]);
   const [buses, setBuses] = useState([]);
   const [boardEtas, setBoardEtas] = useState([]);
+  const [etaFailed, setEtaFailed] = useState(false); // true when the last eta fetch failed, so ResultsCard shows ... instead of "no buses"
   const [currentLeg, setCurrentLeg] = useState(0); // used to determine what leg of a trip a user is on (i.e. for direct trips, remains at 0)
 
   const [tripResult, setTripResult] = useState(null);
@@ -137,9 +153,10 @@ function App() {
       fetch(`${import.meta.env.VITE_PROXY_URL}/routes`).then((r) => r.json()), // index 1
     ]).then(([stopsData, routesData]) => {
       // ordered; stopsData = result[0], routesData = result[1]
-      setStops(stopsData);
-      setRoutes(routesData);
-    });
+      if (Array.isArray(stopsData)) setStops(stopsData); // proxy sends { error } instead of an array when downtowner is down; keep [] rather than storing that
+      if (Array.isArray(routesData)) setRoutes(routesData);
+    })
+    .catch((err) => console.error("Failed to load stops/routes:", err)); // network failure or non-JSON body; without this it's an unhandled rejection
   }, []); // [] is the dependency array indicating that specific thing, but sicne it's empty, it runs exactly once
 
 
@@ -147,7 +164,10 @@ function App() {
     function fetchBuses() {
       fetch(`${import.meta.env.VITE_PROXY_URL}/buses`)
         .then((r) => r.json())
-        .then((data) => setBuses(data));
+        .then((data) => {
+          if (Array.isArray(data)) setBuses(data); // on { error }, keep the last positions; stale buses beat a crash in Map.jsx's buses.filter
+        })
+        .catch((err) => console.error("Failed to load buses:", err)); // next poll in 10s gets another shot
     }
 
     fetchBuses();
@@ -160,6 +180,7 @@ function App() {
   useEffect(() => {
     if (!tripResult || !tripResult.success || !leg) {
       setBoardEtas([]);
+      setEtaFailed(false);
       return;
     }
 
@@ -171,7 +192,13 @@ function App() {
       fetch(`${import.meta.env.VITE_PROXY_URL}/eta/${stopId}`) // fetches etas for our stopID
         .then((r) => r.json())
         .then((data) => {
+          setEtaFailed(Boolean(data?.error)); // proxy sends { error } when downtowner is down
           setBoardEtas(data?.etas?.[stopId]?.etas || []); // note: 1) unsorted 2) returns etas for ALL routes containing boardStop
+        })
+        .catch((err) => { // network failure or non-JSON body
+          console.error("Failed to load ETAs:", err);
+          setEtaFailed(true);
+          setBoardEtas([]); // clear rather than show stale arrival times
         });
       // )
     }
@@ -269,6 +296,7 @@ function App() {
         onAlight={handleAlight} // we call handleAlight when we trigger onAlight
         boarded={boardedBusId !== null} // true if boarded, false otherwise
         stopsRemaining= {stopsRemaining}
+        etaFailed={etaFailed} // true if the last eta fetch failed
       />
     </div>
   );

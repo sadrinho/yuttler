@@ -40,11 +40,14 @@ function Autocomplete({ placeholder, onSelect }) {
     // request a call to either locationIQ or nominatim to geocode our input
     fetch(`${import.meta.env.VITE_PROXY_URL}/autocomplete?q=${encodeURIComponent(input)}`)
       .then(r => r.json()) // array of location results {name, lat, lon}
-      .then(results => setSuggestions(prev => [
+      .then(results => {
+        if (!Array.isArray(results)) return // e.g. { error } from the proxy's error handler; results.filter would crash, so keep the landmark matches
+        setSuggestions(prev => [
         ...prev, // loads what was already existing in setSuggestions for this render cycle; this is always the keystroke's landmark matches
         ...results.filter(result => !prev.some(place => place.name === result.name)) // only if no match in previous
       ])
-    )
+      })
+      .catch(err => console.error('Autocomplete fetch failed:', err)) // network failure or non-JSON body
 
     }, 500) // 500 is the debounce timer in ms
 
