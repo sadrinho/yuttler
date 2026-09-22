@@ -134,7 +134,10 @@ function Autocomplete({ placeholder, onSelect }) {
               // A: if we use onClick, onBlur fires because we lost focus, closes the dropdown, onClick then fires, but our dropdown is gone.
               style={{ padding: '8px', cursor: 'pointer' }}
             >
-              {s.name}
+              <div>{s.name}</div>
+              {s.address && ( // landmarks (and streets) don't have one, so they look the same as before
+                <div style={{ fontSize: '0.8em', color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.address}</div> // one line with ... so it doesn't wrap on mobile
+              )}
             </li>
           ))}
           {showSearchRow && (

@@ -54,11 +54,17 @@ async function cachedFetch(key, url, ttlMs) { // returns data for key, only hitt
 
 // note: .get requests are done in order, top to bottom, by matching; can be important if using some sort of wildcard operator
 
-function normalizeLocation(location, source) { // given a list of raw location objects from a locationIQ or nominatim call (determined by source), return an array of objects {name; lat; lon}
+function shortAddress(address) { // "120 Commercial Parkway" out of the structured address. no city since we're bounded to greater new haven anyway
+  if (!address) return ''
+  return [address.house_number, address.road].filter(Boolean).join(' ') // filter drops whichever part is missing, e.g. no house number
+}
+
+function normalizeLocation(location, source) { // given a list of raw location objects from a locationIQ or nominatim call (determined by source), return an array of objects {name; address; lat; lon}
   return location.map(locObj => ({ 
     name: source === 'locationIQ' // locationIQ and nominatim return different name formats
       ? locObj.display_place
       : locObj.display_name.split(',')[0], // simple split grabbing first segment for now; could be inaccurate. TODO: brainstorm improvement
+    address: shortAddress(locObj.address), // so same-named places (like 3 walmarts) can be told apart in the dropdown
     lat: parseFloat(locObj.lat),
     lon: parseFloat(locObj.lon)
   }))
@@ -147,7 +153,7 @@ const iqURL = `https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCA
   // normalizeaddress=1 "makes parsing of the address object easier by returning a predictable and defined list of elements. Defaults to 0 for backward compatibility. We recommend setting this to 1 for new projects" 
 */
 
-const nomURL = `https://nominatim.openstreetmap.org/search?&format=json&limit=1&viewbox=-72.8084514641751,41.41930017433788,-73.02641547890617,41.22302882412524&bounded=1` // nominatim's endpoint. note: format of viewbox coord pairs differs with locationIQ 
+const nomURL = `https://nominatim.openstreetmap.org/search?&format=json&limit=1&viewbox=-72.8084514641751,41.41930017433788,-73.02641547890617,41.22302882412524&bounded=1&addressdetails=1` // nominatim's endpoint. note: format of viewbox coord pairs differs with locationIQ. addressdetails=1 gets us the structured address for shortAddress
 const nominatimEnabled = process.env.ENABLE_NOMINATIM === 'true' // off unless explicitly set to 'true'; nominatim's policy caps us at 1 req/s and forbids autocomplete use
 
 // in-memory cache for locationIQ results, keyed by the cleaned-up query (never the url, since that has our key in it)
