@@ -106,6 +106,7 @@ const iqURL = `https://api.locationiq.com/v1/autocomplete?key=${process.env.LOCA
 */
 
 const nomURL = `https://nominatim.openstreetmap.org/search?&format=json&limit=1&viewbox=-72.8084514641751,41.41930017433788,-73.02641547890617,41.22302882412524&bounded=1` // nominatim's endpoint. note: format of viewbox coord pairs differs with locationIQ 
+const nominatimEnabled = process.env.ENABLE_NOMINATIM === 'true' // off unless explicitly set to 'true'; nominatim's policy caps us at 1 req/s and forbids autocomplete use
 
 // make a request to locationIQ's API based on a user query
 app.get('/autocomplete', async (req, res) => {
@@ -125,6 +126,11 @@ app.get('/autocomplete', async (req, res) => {
 } catch (err) {
   // big boy error, probably network related. request never cocmpleted at all
   console.error('LocationIQ request failed:', scrubKey(err.message))
+}
+
+if (!nominatimEnabled) { // fallback is off by default so launch traffic can't get our IP banned by nominatim
+  console.error('Nominatim fallback disabled, returning []')
+  return res.json([])
 }
 
 // call nominatim, our fallback option
