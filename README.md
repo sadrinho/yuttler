@@ -4,7 +4,11 @@ A Google Maps style trip planner for the Yale Shuttle transit system. Enter wher
 
 Built by reverse-engineering the undocumented API behind Yale's Downtowner shuttle web app, because no public API or documentation exists (as of 9/10/26).
 
-**Note: I will be updating this file with the official domain for Yuttler in the next week (by 9/17/26). Stay tuned!**
+**Note: The UI/UX has not been modified at all yet (as of 9/22) but the website is live at the link below!** 
+
+[Visit Yuttler](https://www.yuttler.com)
+
+**Note: The website is currently hosted on Render's free tier, which means the back end takes ~30-50 seconds to spin up following inactivity -- as of 9/22, I'm working to get funding for a higher tier! Expect to see 0 stops/routes/buses loaded until this brief period is over.**
 
 ## Features
 
