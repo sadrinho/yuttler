@@ -240,15 +240,13 @@ Problems scoring should address:
 
 ## A Note on the Usage of AI/LLMs
 
-I used Claude/LLMs to assist me as tutors, but I did not use them as code generators or shortcuts to a working app.
+The core of Yuttler is hand-written. The trip planner (graph, BFS, candidate selection), the original proxy, the autocomplete, and the app's state logic were written by me, with Claude/LLMs acting as tutors rather than code generators. The workflow was: draft an idea; sketch its implementation; prompt the model to review the sketch; argue with it or change anything I disagreed with; read the documentation if I was confused; then implement and debug it myself. I can explain any line of that code: why it's there, why it's shaped the way it is, and why it behaves the way it does. I'm incredibly proud of the human effort that went into it.
 
-When LLMs were used, the workflow consisted of: drafing an idea; sketching its implementation; prompting the model to review the sketch; argue with it or change anything I disagreed with; go through the appropriate documentation if I was confused; then, lastly, implement it and debug it.
+Launch hardening was AI assisted. The pre-launch reliability work (proxy caching and request coalescing, upstream failure handling, frontend error guards, the zero-length path fix and its test) was written by Claude Code against a spec I wrote. Each change was proposed as a plan, explained line by line, and approved by me before it went in. I'm confident in the changes made here, too.
 
-**I am confident I can explain any line of my application logic and code** (App.jsx, Autocomplete.jsx, Map.jsx, tripPlanner.js, server.js, ...).  I can tell you  why something is there, shaped the way it is, or behaves the way it does. I am incredibly proud of the **human effort** that went into this project.
+It's important to note that I am planning on using LLMs to generate code for the UI/UX, though I will still meticulously review changes and ensure I maintain the highest standards for Yuttler. If anyone reading this is interested in coming on board and helping design the website visually, I would be more than happy to oblige and remove the AI generated styling. Unfortunately, budget and time constraints mean I can't make this a reality on my own (at the moment).
 
-It's important to note that I am planning on using LLMs to generate code for visual styling, though I will still meticulously review changes and ensure I maintain the highest standards for Yuttler. **If anyone reading this is interested in coming on board and helping design the website visually,** I would be more than happy to oblige and remove the AI generated styling. Unfortunately, budget and time constraints mean I can't make this a reality on my own (at the moment).
-
-I also used Claude to create this README file (excluding this section). I reviewed the output and everything looked correct. Yes, there are many, many em-dashes! 
+I also used Claude to write and update the other parts of this README. I reviewed the output and everything looked correct. Yes, there are many, many em-dashes!
 
 ## Notes
 
