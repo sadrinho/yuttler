@@ -103,6 +103,8 @@ function Map( { tripResult, routes, darkMode, buses }) {
           // ? "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png" // possible 2nd choice in case Carto's is too dark. requires API key though
           : `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${import.meta.env.VITE_CARTO_API_KEY}` }
         attribution={ATTRIBUTION} // kept on the layer too, so it's still correct if leaflet's control ever comes back
+        updateWhenIdle={false} // on phones leaflet waits until you stop panning to load tiles (blank edges while dragging); load them as you go instead
+        keepBuffer={4} // keep more off-screen tiles around (default 2) so panning back doesn't re-download them
       />
 
         {/* every route's casing first, then every route's line on top, so where routes cross no casing cuts through another line */}
