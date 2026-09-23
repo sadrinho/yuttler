@@ -32,21 +32,10 @@
   gap: 14px;
 }
 
-/* like the menu: the mark only fills ~70% of the icon (the rest is invisible blue), so draw it bigger and pull it back
-   in with negative margins so the visible mark matches the wordmark without moving anything */
-.logo {
-  display: block;
-  width: 62px;
-  height: 62px;
-  margin: -11px;
-  flex: none;
-}
-
 .wordmark {
-  font-size: 52px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1;
+  display: block;
+  height: 56px;
+  width: auto;
 }
 
 /* ---------- load failed ---------- */
@@ -132,14 +121,8 @@
     gap: 20px;
   }
 
-  .logo {
-    width: 88px;
-    height: 88px;
-    margin: -16px;
-  }
 
   .wordmark {
-    font-size: 76px;
-    letter-spacing: -0.035em;
+    height: 80px;
   }
 }

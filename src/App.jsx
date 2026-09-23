@@ -616,7 +616,21 @@ function App() {
           >
             <MenuIcon />
           </button>
-          <div className={styles.wordmark}>yuttler.</div>
+          {/* desktop pane wordmark: yale blue on the white pane, white on the dark one (css picks by theme) */}
+          <span className={styles.wordmark}>
+            <img
+              className={styles.wordmarkLight}
+              src="/brand/yuttler-wordmark-blue-32h.png"
+              srcSet="/brand/yuttler-wordmark-blue-32h.png 1x, /brand/yuttler-wordmark-blue-64h.png 2x"
+              alt="yuttler"
+            />
+            <img
+              className={styles.wordmarkDark}
+              src="/brand/yuttler-wordmark-white-32h.png"
+              srcSet="/brand/yuttler-wordmark-white-32h.png 1x, /brand/yuttler-wordmark-white-64h.png 2x"
+              alt="yuttler"
+            />
+          </span>
 
           {/* cancel X: left on mobile, far right on desktop. shown in every result state; the only way out of a trip.
               same button element in both looks (X, then the armed "Cancel trip" pill), so it doesn't remount between taps */}

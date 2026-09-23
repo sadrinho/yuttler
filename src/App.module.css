@@ -81,10 +81,22 @@
 
 .wordmark {
   display: none;
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--accent-text);
+}
+
+.wordmark img {
+  display: block;
+  height: 28px;
+  width: auto;
+}
+
+/* blue wordmark on the light pane, white on the dark one (scoped under .wordmark so these beat the img rule above) */
+.wordmark .wordmarkDark,
+:global([data-theme='dark']) .wordmark .wordmarkLight {
+  display: none;
+}
+
+:global([data-theme='dark']) .wordmark .wordmarkDark {
+  display: block;
 }
 
 /* ---------- mobile bottom sheet ---------- */

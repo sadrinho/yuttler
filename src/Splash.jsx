@@ -6,14 +6,18 @@ import { FEEDBACK_EMAIL } from "./contact";
 function Splash({ error }) {
   const code = error?.status ? `Error ${error.status}` : "Network error"; // no status = the request never got an answer
   // prefilled so the email says what went wrong without the user having to explain it
-  const bugReport = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(`yuttler. bug report (${code})`)}`;
+  const bugReport = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(`yuttler bug report (${code})`)}`;
 
   return (
     <div className={styles.splash} role="alert">
       <div className={styles.brand}>
-        {/* the logo's blue background matches the screen behind it, so just the white mark shows */}
-        <img className={styles.logo} src="/icon-192.png" alt="" />
-        <div className={styles.wordmark}>yuttler.</div>
+        {/* the wordmark lockup, white on yale blue. shown at 56-80px tall, so the 128/256px files keep it sharp */}
+        <img
+          className={styles.wordmark}
+          src="/brand/yuttler-wordmark-white-128h.png"
+          srcSet="/brand/yuttler-wordmark-white-128h.png 1x, /brand/yuttler-wordmark-white-256h.png 2x"
+          alt="yuttler"
+        />
       </div>
 
       <div className={styles.failed}>

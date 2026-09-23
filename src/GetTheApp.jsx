@@ -144,7 +144,7 @@ function GetTheApp() {
               className={styles.installButton}
               onClick={install}
             >
-              Install yuttler.
+              Install yuttler
             </button>
           )}
 

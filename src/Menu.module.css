@@ -60,22 +60,10 @@
   gap: 12px;
 }
 
-/* the mark only fills ~70% of the icon (the rest is blue, invisible on the blue band), so draw it bigger and pull it back
-   in with negative margins: the visible mark matches the wordmark's height, and the header keeps its 34px layout */
-.logo {
-  display: block;
-  width: 46px;
-  height: 46px;
-  margin: -6px;
-  flex: none;
-}
-
 .wordmark {
-  font-size: 32px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  color: #ffffff;
+  display: block;
+  height: 32px;
+  width: auto;
 }
 
 /* ---------- body ---------- */
@@ -163,7 +151,7 @@
 
 /* ---------- get the app ---------- */
 
-/* the "add yuttler. to your home screen" row is a button styled like the feedback row */
+/* the "add yuttler to your home screen" row is a button styled like the feedback row */
 button.feedbackRow {
   width: 100%;
   border: 0;

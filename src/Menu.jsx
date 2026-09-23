@@ -3,7 +3,7 @@ import styles from "./Menu.module.css";
 import { FEEDBACK_EMAIL } from "./contact";
 import GetTheApp from "./GetTheApp";
 
-const feedbackLink = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent("yuttler. feedback")}`;
+const feedbackLink = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent("yuttler feedback")}`;
 
 // the hamburger menu: theme toggle, feedback, credits and the stats line.
 // always mounted (closed = slid off to the left and inert) so step 8 can animate it with plain css
@@ -40,9 +40,13 @@ function Menu({
         aria-label="Menu"
       >
         <div className={styles.header}>
-          {/* the logo's blue background matches the band behind it, so just the white mark shows */}
-          <img className={styles.logo} src="/icon-192.png" alt="" />
-          <div className={styles.wordmark}>yuttler.</div>
+          {/* the wordmark lockup (mark + "yuttler"), white on the yale blue band. 2x file for sharp retina screens */}
+          <img
+            className={styles.wordmark}
+            src="/brand/yuttler-wordmark-white-32h.png"
+            srcSet="/brand/yuttler-wordmark-white-32h.png 1x, /brand/yuttler-wordmark-white-64h.png 2x"
+            alt="yuttler"
+          />
         </div>
 
         <div className={styles.body}>

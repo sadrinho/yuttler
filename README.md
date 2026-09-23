@@ -1,4 +1,4 @@
-# yuttler.
+# yuttler
 
 A Google Maps style trip planner for the Yale Shuttle transit system. Enter where you are and where you're going, and it tells you which stop to walk to, which bus to board, where to transfer, and where to get off, with live bus positions, real-time arrival estimates, and the route drawn on an interactive map.
 
