@@ -192,30 +192,16 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
     stopsById[stop.id] = stop 
   }
 
-  // find the 5 nearest stops to each location
-  const startCandidates = getNearestStops(startLat, startLon, stops, 5)
-  const endCandidates = getNearestStops(endLat, endLon, stops, 5)
-
-  const graph = buildGraph(routes.filter(route => route.active)) // we only use routes which are marked as active
+  const activeRoutes = routes.filter(route => route.active) // we only use routes which are marked as active
+  const graph = buildGraph(activeRoutes)
   // builds our graph based on our routes + stops; see buildGraph implementation for more details
 
-  const candidates = [] 
-  // candidates will later store every findPath(graph, startStopId, endStopId) result "path" as { path, walkDistance: startStop.distance + endStop.distance }
-  // we store walkdistance for our tiebreak, which is based on overall lowest walking distance between our start + end locations and their respective stops
-
-  // for every combo of start + end stops (25 total)
-  for (const startStop of startCandidates) {
-    for (const endStop of endCandidates) {
-      const path = findPath(graph, startStop.id, endStop.id)
-      if(path && path.length > 0) { // only push when path !null and has at least one leg (start === end gives [], which would sort first as "fewest legs")
-        candidates.push({ path, walkDistance: startStop.distance + endStop.distance}) // see candidates initialization for more details
-      }
-    }
-  }
+  const candidates = findCandidates(graph, stops, startLat, startLon, endLat, endLon)
 
   if (candidates.length === 0){
-    return { success: false, message: "No route found" }
-  } 
+    // no route: work out why, so the app can say something more useful than "no route found"
+    return { success: false, message: "No route found", ...explainNoRoute(activeRoutes, routes, stops, startLat, startLon, endLat, endLon) }
+  }
 
   // we now have our populated candidates array. we find the best option (if it exists) based on minimum legs, and as a tiebreaker, least walking distance
 
@@ -243,6 +229,69 @@ function planTrip(startLat, startLon, endLat, endLon, stops, routes) {
     legs: legs // with our hydrated stop objects
   }
 
+}
+
+// every working path between the 5 nearest stops at each end, as { path, walkDistance }. only stops that are actually in the
+// graph (i.e. served by one of its routes) count as "nearest": a stop no bus visits can never be part of a path, and before
+// this, those dead stops were crowding real ones out of the top 5 (about half of all "no route found"s in testing)
+function findCandidates(graph, stops, startLat, startLon, endLat, endLon) {
+  const servedStops = stops.filter(stop => graph[stop.id]) // graph has an entry for every stop its routes visit
+
+  // find the 5 nearest (served) stops to each location
+  const startCandidates = getNearestStops(startLat, startLon, servedStops, 5)
+  const endCandidates = getNearestStops(endLat, endLon, servedStops, 5)
+
+  const candidates = []
+  // candidates will later store every findPath(graph, startStopId, endStopId) result "path" as { path, walkDistance: startStop.distance + endStop.distance }
+  // we store walkdistance for our tiebreak, which is based on overall lowest walking distance between our start + end locations and their respective stops
+
+  // for every combo of start + end stops (25 total)
+  for (const startStop of startCandidates) {
+    for (const endStop of endCandidates) {
+      const path = findPath(graph, startStop.id, endStop.id)
+      if(path && path.length > 0) { // only push when path !null and has at least one leg (start === end gives [], which would sort first as "fewest legs")
+        candidates.push({ path, walkDistance: startStop.distance + endStop.distance}) // see candidates initialization for more details
+      }
+    }
+  }
+  return candidates
+}
+
+const NEARBY_METERS = 800 // about a 10 minute walk: farther than this from any stop counts as "no shuttle near here"
+
+// when there's no route, say why. checked in order, first match wins:
+//   noService:    no routes are running at all right now
+//   outOfArea:    no shuttle stop (running or not) anywhere near the start and/or end
+//   notRunning:   there IS a route, but it uses routes that aren't running right now (routeNames says which)
+//   nothingNearby: stops exist near there, just none on a running route right now
+//   noConnection: running stops near both ends, but no way between them (e.g. the loop seam, see README)
+// `which` is 'start', 'end' or 'both' for the two location-specific reasons
+function explainNoRoute(activeRoutes, allRoutes, stops, startLat, startLon, endLat, endLon) {
+  if (activeRoutes.length === 0) return { reason: 'noService' }
+
+  const nearestServedBy = (routeList, lat, lon) => { // distance to the closest stop that one of routeList visits
+    const ids = new Set(routeList.flatMap(route => route.stops))
+    return getNearestStops(lat, lon, stops.filter(stop => ids.has(stop.id)), 1)[0]?.distance ?? Infinity
+  }
+  const which = (startFar, endFar) => (startFar && endFar ? 'both' : startFar ? 'start' : 'end')
+
+  const startFarFromAny = nearestServedBy(allRoutes, startLat, startLon) > NEARBY_METERS
+  const endFarFromAny = nearestServedBy(allRoutes, endLat, endLon) > NEARBY_METERS
+  if (startFarFromAny || endFarFromAny) return { reason: 'outOfArea', which: which(startFarFromAny, endFarFromAny) }
+
+  // same search again, but with every route including the ones not running right now
+  const withInactive = findCandidates(buildGraph(allRoutes), stops, startLat, startLon, endLat, endLon)
+  if (withInactive.length > 0) {
+    withInactive.sort((a, b) => a.path.length - b.path.length || a.walkDistance - b.walkDistance) // same ranking as planTrip
+    const routeNames = [...new Set(withInactive[0].path.filter(leg => !leg.route.active).map(leg => leg.route.name))]
+    if (routeNames.length > 0) return { reason: 'notRunning', routeNames } // (rarely the best path picks different stops and needs no inactive route; then fall through)
+  }
+
+  const startFarFromActive = nearestServedBy(activeRoutes, startLat, startLon) > NEARBY_METERS
+  const endFarFromActive = nearestServedBy(activeRoutes, endLat, endLon) > NEARBY_METERS
+  if (startFarFromActive || endFarFromActive) return { reason: 'nothingNearby', which: which(startFarFromActive, endFarFromActive) }
+
+  return { reason: 'noConnection' }
 }
 
 function getNearestStops(lat, lon, stops, count) { // self explanatory

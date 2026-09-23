@@ -19,6 +19,36 @@ function MenuIcon() {
   );
 }
 
+// what to say when planTrip finds no route, based on the reason it gives (see explainNoRoute in tripPlanner.js).
+// text = the full sentence in the panel, summary = the short version on the collapsed mobile bar
+function noRouteCopy(result) {
+  const where = { start: "your starting point", end: "your destination", both: "either place" }[result.which];
+  switch (result.reason) {
+    case "noService":
+      return { text: "No shuttles are running right now.", summary: "No shuttles running" };
+    case "outOfArea":
+      return {
+        text: result.which === "both"
+          ? "These places are outside the area the shuttle covers."
+          : `${result.which === "start" ? "Your starting point" : "Your destination"} is outside the area the shuttle covers.`,
+        summary: "Outside the shuttle area",
+      };
+    case "notRunning": {
+      const names = result.routeNames;
+      const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+      const one = names.length === 1;
+      return {
+        text: `The ${list} ${one ? "goes" : "go"} there, but ${one ? "it isn't" : "they aren't"} running right now.`,
+        summary: one ? `${names[0]} isn't running now` : "Those routes aren't running now",
+      };
+    }
+    case "nothingNearby":
+      return { text: `No running shuttles stop near ${where} right now.`, summary: "No shuttles running nearby" };
+    default: // noConnection, or an older result with no reason
+      return { text: "No route found between these locations.", summary: "No route found" };
+  }
+}
+
 // everything below the divider in a trip state. App works out which view we're in (tripView) from the existing
 // state, this just draws it. stays one component with stable elements so 10s/30s updates don't remount anything
 function ResultsCard({
@@ -35,9 +65,7 @@ function ResultsCard({
   legColor,
 }) {
   if (view === "noRoute") {
-    return (
-      <div className={card.title}>No route found between these locations.</div>
-    );
+    return <div className={card.title}>{noRouteCopy(result).text}</div>; // says why, when planTrip can tell
   }
 
   if (view === "walk") {
@@ -522,7 +550,7 @@ function App() {
       case "walk":
         return `Walk ~${Math.max(1, Math.round(tripResult.distance / 80))} min`;
       case "noRoute":
-        return "No route found";
+        return noRouteCopy(tripResult).summary;
       case "riding":
         return stopsRemaining === null
           ? `Get off at ${leg.alightStop.name}`

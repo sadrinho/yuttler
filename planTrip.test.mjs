@@ -1,4 +1,4 @@
-// standalone test harness for planTrip (graph.test.mjs covers buildGraph/findPath). run with: node planTrip.test.mjs
+// standalone test harness for planTrip. run with: node planTrip.test.mjs
 // uses toy stops ~1.1km apart so results are hand-verifiable, not live data
 import assert from 'node:assert/strict'
 import { planTrip } from './src/tripPlanner.js'
@@ -35,6 +35,57 @@ test('real path still wins when zero-length candidates also exist', () => {
   assert.equal(result.legs.length, 1)
   assert.equal(result.legs[0].boardStop.name, 'A')
   assert.equal(result.legs[0].alightStop.name, 'C')
+})
+
+test('stops no running route visits do not crowd real stops out of the nearest 5', () => {
+  // 5 dead stops (on no route) sit right next to the start, closer than A. before, they filled all 5 start candidates
+  const dead = [11, 12, 13, 14, 15].map((id, i) => ({ id, name: `Dead${i}`, lat: 41.2992 + i * 0.0001, lon: -72.93 }))
+  const fwd = { id: 9, name: 'Fwd', active: true, stops: [1, 2, 3] }
+  const result = planTrip(41.299, -72.93, 41.320, -72.93, [...dead, A, B, C], [fwd])
+  assert.equal(result.success, true)
+  assert.equal(result.legs[0].boardStop.name, 'A')
+})
+
+// ---- no route: the reason why ----
+
+test('no routes running at all -> noService', () => {
+  const fwd = { id: 9, name: 'Fwd', active: false, stops: [1, 2, 3] }
+  const result = planTrip(41.300, -72.93, 41.320, -72.93, [A, B, C], [fwd])
+  assert.equal(result.success, false)
+  assert.equal(result.reason, 'noService')
+})
+
+test('destination nowhere near any shuttle stop -> outOfArea, end', () => {
+  // only A is served, so the nearest stop to both ends is A and there's no route; the end is ~11km from A
+  const onlyA = { id: 9, name: 'OnlyA', active: true, stops: [1] }
+  const result = planTrip(41.300, -72.93, 41.400, -72.93, [A], [onlyA])
+  assert.equal(result.reason, 'outOfArea')
+  assert.equal(result.which, 'end')
+})
+
+test('a route goes there but is not running -> notRunning, with its name', () => {
+  const fwd = { id: 9, name: 'Fwd', active: false, stops: [1, 2, 3] }
+  const onlyB = { id: 10, name: 'OnlyB', active: true, stops: [2] } // something is running, just not the right route
+  const result = planTrip(41.300, -72.93, 41.320, -72.93, [A, B, C], [fwd, onlyB])
+  assert.equal(result.reason, 'notRunning')
+  assert.deepEqual(result.routeNames, ['Fwd'])
+})
+
+test('stops near both ends, but none on a running route -> nothingNearby, both', () => {
+  const x = { id: 20, name: 'X', active: false, stops: [1] } // near the start, not running
+  const y = { id: 21, name: 'Y', active: false, stops: [3] } // near the end, not running
+  const z = { id: 22, name: 'Z', active: true, stops: [2] } // running, but B is ~1.1km from both ends
+  const result = planTrip(41.300, -72.93, 41.320, -72.93, [A, B, C], [x, y, z])
+  assert.equal(result.reason, 'nothingNearby')
+  assert.equal(result.which, 'both')
+})
+
+test('running stops near both ends but no way between them -> noConnection', () => {
+  // A and C are each on their own running route, and nothing links them
+  const onlyA = { id: 9, name: 'OnlyA', active: true, stops: [1] }
+  const onlyC = { id: 10, name: 'OnlyC', active: true, stops: [3] }
+  const result = planTrip(41.300, -72.93, 41.320, -72.93, [A, C], [onlyA, onlyC])
+  assert.equal(result.reason, 'noConnection')
 })
 
 console.log(`\n${passed} passed`)

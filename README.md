@@ -92,7 +92,7 @@ Minimizing actual travel time is a weighted shortest-path problem — Dijkstra w
 
 ### Choosing among candidates
 
-The planner takes the 5 nearest stops to your start and the 5 nearest to your destination (Haversine distance), runs the search on all 25 pairs, and collects every path that succeeds along with the total walking distance that pair implies.
+The planner takes the 5 nearest stops to your start and the 5 nearest to your destination (Haversine distance), counting only stops that a currently running route actually serves, runs the search on all 25 pairs, and collects every path that succeeds along with the total walking distance that pair implies.
 
 Candidates are then sorted by fewest legs, tiebroken on least total walking:
 
@@ -105,6 +105,10 @@ candidates.sort((a, b) =>
 Earlier versions returned the *first* match they found, which meant the nearest start stop won by accident of loop order — an extra 200m walk that saved a transfer was never even considered.
 
 If your start and destination are less than 400m apart in a straight line, the planner short-circuits and tells you to walk.
+
+Only counting served stops matters more than it sounds. Before, stops that no running bus visits (a third of them at any given time) could fill the 5 nearest slots and turn a perfectly routable trip into "no route found"; in a sample of 729 trips across the service area, that was half of all failures.
+
+When there really is no route, the planner says why instead of just failing. It returns a `reason`, checked in this order: no shuttles are running at all; the start or destination is more than ~800m from any shuttle stop (outside the area); a route goes there but isn't running right now (it reruns the search with inactive routes included, and names them); no *running* route stops within ~800m; or none of those, and the stops just don't connect. The app turns that into a sentence like "The Gold Route goes there, but it isn't running right now."
 
 ### Layering
 
