@@ -7,7 +7,6 @@ import card from "./ResultsCard.module.css";
 import { routeColor } from "./routeColor";
 import Splash from "./Splash";
 import Menu from "./Menu";
-import { useSheetDrag } from "./useSheetDrag";
 
 function MenuIcon() {
   // the three hamburger bars, used by both the floating (mobile) and in-pane (desktop) menu buttons
@@ -247,9 +246,6 @@ function App() {
 
   // index.html already picked the theme from localStorage before react loaded, so just read it back
   const [panelExpanded, setPanelExpanded] = useState(true); // mobile only: bottom sheet open vs collapsed to its one-line bar. desktop ignores it
-  const panelRef = useRef(null);
-  const sheetDrag = useSheetDrag(panelRef, setPanelExpanded); // drag the sheet down by its handle / header (mobile)
-  const barSwipe = useRef(null); // where a touch on the collapsed bar started, to spot a swipe up
   const [cancelArmed, setCancelArmed] = useState(false); // true after the first tap on the X: it's showing "Cancel trip" and the next tap ends the trip
   const cancelRef = useRef(null);
 
@@ -575,17 +571,7 @@ function App() {
       {/* mobile: the one-line bar you see when the sheet is hidden. the whole bar is the tap target */}
       <div
         className={`${styles.collapsedBar} ${panelExpanded ? "" : styles.collapsedBarShown}`}
-        // swiping up on the bar opens the sheet too (a tap already does, via the button)
-        onPointerDown={(e) => {
-          barSwipe.current = e.clientY;
-        }}
-        onPointerUp={(e) => {
-          if (barSwipe.current !== null && barSwipe.current - e.clientY > 20)
-            setPanelExpanded(true);
-          barSwipe.current = null;
-        }}
       >
-        <div className={styles.sheetHandle} aria-hidden="true" />
         <button
           type="button"
           className={styles.summaryButton}
@@ -610,19 +596,14 @@ function App() {
 
       {/* the panel: bottom sheet on mobile, fixed 400px left pane on desktop */}
       <aside
-        ref={panelRef}
         className={`${styles.panel} ${panelExpanded ? "" : styles.panelCollapsed}`}
-        {...sheetDrag} // pointer handlers for dragging the sheet down (they ignore everything outside the drag zone)
         // pressing a button normally steals focus from the field you're typing in, which shrinks the sheet mid-tap
         // and the click lands somewhere else. stopping that focus move keeps everything still until the click happens
         onMouseDown={(e) => {
           if (e.target.closest("button")) e.preventDefault();
         }}
       >
-        {/* mobile: grab handle. it and the header row's empty space are where a drag can start */}
-        <div className={styles.sheetHandle} data-drag-zone aria-hidden="true" />
-
-        <div className={styles.panelHeader} data-drag-zone>
+        <div className={styles.panelHeader}>
           {/* desktop only: menu button + wordmark at the top of the pane */}
           <button
             type="button"

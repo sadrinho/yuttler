@@ -195,34 +195,6 @@
   gap: 14px;
   min-height: 44px;
   flex: none;
-  touch-action: none; /* a drag here moves the sheet (useSheetDrag), not the page */
-}
-
-/* mobile grab handle at the top of the sheet and the collapsed bar. the drag zone is this plus the header row */
-.sheetHandle {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 120px; /* invisible hit area, wider than the pill */
-  height: 16px;
-  touch-action: none;
-}
-
-.sheetHandle::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  left: 42px;
-  width: 36px;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--text-muted-2);
-  opacity: 0.6;
-}
-
-.collapsedBar {
-  touch-action: none; /* swipe up on the bar opens the sheet */
 }
 
 .hideButton {
@@ -415,8 +387,7 @@
 
   .floatingMenuButton,
   .collapsedBar,
-  .hideButton,
-  .sheetHandle {
+  .hideButton {
     display: none;
   }
 
