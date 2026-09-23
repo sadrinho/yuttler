@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import styles from "./Menu.module.css";
 import { FEEDBACK_EMAIL } from "./contact";
+import GetTheApp from "./GetTheApp";
 
 const feedbackLink = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent("yuttler. feedback")}`;
 
@@ -73,6 +74,9 @@ function Menu({
             </div>
           </section>
 
+          {/* how to add yuttler to your home screen (plus chrome's one-tap install when it's offered) */}
+          <GetTheApp />
+
           <section className={styles.section}>
             <div className={styles.label}>Feedback</div>
             <a className={styles.feedbackRow} href={feedbackLink}>
@@ -108,9 +112,6 @@ function Menu({
           <footer className={styles.footer}>
             <div className={styles.divider} />
             <p className={styles.credit}>
-              Made with love by Sadra Aliakbarpour
-            </p>
-            <p className={styles.credit}>
               Search by{" "}
               <a
                 href="https://www.locationiq.com"
@@ -122,6 +123,9 @@ function Menu({
             </p>
             <p className={styles.credit}>
               Not affiliated with Yale University or Downtowner
+            </p>
+            <p className={styles.credit}>
+              Made with love by Sadra Aliakbarpour &lt;3
             </p>
             {/* deliberately small and gray so it doesn't read as tappable */}
             <p className={styles.stats}>
