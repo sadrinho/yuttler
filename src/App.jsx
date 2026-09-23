@@ -288,6 +288,9 @@ function App() {
   useEffect(() => {
     const theme = darkMode ? "dark" : "light";
     document.documentElement.dataset.theme = theme;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", darkMode ? "#12151a" : "#ffffff"); // phone browser bar matches the theme
     try {
       localStorage.setItem("theme", theme);
     } catch {

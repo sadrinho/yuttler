@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Live trip planner for Yale's Downtowner shuttle: which stop to walk to, when your bus is coming, and when to get off." />
+    <!-- browser toolbar color on phones. the theme is a manual toggle (not the OS setting), so the script below and
+         App.jsx set it to match instead of using a light/dark media pair -->
+    <meta name="theme-color" content="#ffffff" />
+    <!-- link previews when yuttler.com is shared (imessage, slack, etc.) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.yuttler.com/" />
+    <meta property="og:title" content="yuttler." />
+    <meta property="og:description" content="Live trip planner for Yale's Downtowner shuttle." />
+    <meta name="twitter:card" content="summary" />
     <link rel="preload" href="/fonts/instrument-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
     <!-- open connections to the map tile servers right away instead of when leaflet asks for the first tile -->
     <link rel="preconnect" href="https://a.basemaps.cartocdn.com" />
@@ -15,6 +25,10 @@
         document.documentElement.dataset.theme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light'
       } catch {
         document.documentElement.dataset.theme = 'light'
+      }
+      // match the phone's browser bar to it (App.jsx keeps this in sync when the theme is switched)
+      if (document.documentElement.dataset.theme === 'dark') {
+        document.querySelector('meta[name="theme-color"]').content = '#12151a'
       }
     </script>
     <title>yuttler.</title>

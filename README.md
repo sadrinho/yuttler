@@ -1,26 +1,28 @@
-# Yale Shuttle Trip Planner
+# yuttler.
 
 A Google Maps style trip planner for the Yale Shuttle transit system. Enter where you are and where you're going, and it tells you which stop to walk to, which bus to board, where to transfer, and where to get off, with live bus positions, real-time arrival estimates, and the route drawn on an interactive map.
 
 Built by reverse-engineering the undocumented API behind Yale's Downtowner shuttle web app, because no public API or documentation exists (as of 9/10/26).
 
-**Note: The UI/UX has not been modified at all yet (as of 9/22) but the website is live at the link below!** 
+**The V4 redesign shipped on 9/23: fullscreen map, mobile bottom sheet / desktop side pane, light and dark themes.** The website is live at the link below!
 
 [Visit Yuttler](https://www.yuttler.com)
 
-**Note: The website is currently hosted on Render's free tier, which means the back end takes ~30-50 seconds to spin up following inactivity -- as of 9/22, I'm working to get funding for a higher tier! Expect to see 0 stops/routes/buses loaded until this brief period is over.**
+**Note: The website is currently hosted on Render's free tier, which means the back end takes ~30-50 seconds to spin up following inactivity -- as of 9/22, I'm working to get funding for a higher tier! Until it's up, the search shows "Loading routes…" and Find route waits.**
 
 ## Features
 
 **Multi-leg trip planning.** The planner runs a breadth-first search over a graph of the shuttle system, so trips requiring a transfer are found automatically. A direct trip is just a path of length 1.
 
-**Live buses and arrival times.** Bus positions refresh every 10 seconds and render as heading-rotated arrows in their route's color. Arrival estimates for your boarding stop refresh every 30 seconds.
+**Live buses and arrival times.** Bus positions refresh every 10 seconds and render as circles in their route's color, with a small arrow showing which way each bus is heading. Arrival estimates for your boarding stop refresh every 30 seconds. Both polls pause while the tab is in the background and refresh as soon as it comes back.
 
-**Turn-by-turn ride guidance.** The results card shows only what you need to do right now: walk to a stop, board a named bus, ride until your alight stop, transfer, repeat. "I'm on board" and "I'm off" advance the state machine, and a live stop counter tracks how far your bus is from where you need it.
+**Turn-by-turn ride guidance.** The panel shows only what you need to do right now: walk to a stop, board a named bus (with the next arrival as a big live countdown and the two after it underneath), ride until your alight stop, transfer, repeat. "I'm on board" and "I'm off" advance the trip once your bus is 4 or fewer stops away, and "Done" ends it on the final leg. Cancelling takes two taps (the X turns into a red "Cancel trip" button), so a stray tap can't lose your trip.
 
 **Autocomplete search.** Campus landmarks resolve instantly from a curated table with aliases (`akw`, `som`, `div school`). Anything else is geocoded through LocationIQ, bounded roughly to the New Haven area, with results cached on the proxy for 24 hours. A Nominatim fallback exists but is off by default (see below).
 
-**Interactive map** (Leaflet + OpenStreetMap data). Every route drawn in its official color; after a search the map narrows to just the routes your trip uses, with pins for your start, each boarding stop, each transfer, and your destination. Light and dark tiles.
+**Interactive map** (Leaflet + OpenStreetMap data, CARTO tiles). Before a search it shows only the routes running right now and their buses; after a search it narrows to just the routes your trip uses, with markers for your start, each boarding stop, each transfer, where to get off, and your destination. Tap a bus or stop for a label. Walk-only trips show just the two pins.
+
+**Designed for phones first.** On mobile the map fills the screen under a bottom sheet you can hide down to a one-line summary ("Board Blue West in 4 min"); on desktop the same content sits in a 400px side pane. Light and dark themes are a manual toggle in the hamburger menu (it never follows the OS setting) and are remembered between visits; route colors are lightened in dark mode so they stay readable on the dark map. The menu also has a feedback link, credits, and a "Loaded … stops, routes, buses" line. Motion is kept to slides and fades, and everything turns instant if your device has Reduce Motion on.
 
 ## How it works
 
@@ -60,7 +62,7 @@ Every open tab polls `/buses` every 10 seconds and `/eta/:stopId` every 30. With
 
 **Nominatim is off by default.** Its usage policy caps clients at 1 request/second and forbids autocomplete use, so under load a LocationIQ outage spilling over to it would risk an IP ban. When LocationIQ fails, `/autocomplete` returns `[]`. Set `ENABLE_NOMINATIM=true` to re-enable the fallback.
 
-The frontend treats any non-array response as a failure and keeps its previous state (stale bus positions beat a crash). A failed ETA fetch shows `...` in the results card rather than claiming no buses are inbound.
+The frontend treats any non-array response as a failure and keeps its previous state (stale bus positions beat a crash). A failed ETA fetch shows "Can't load arrival times right now." rather than claiming no buses are inbound. If the initial stops/routes load fails (a network error, a non-OK status like the proxy's 502, or a non-list body), the app shows a full-screen "Couldn't reach Yuttler's server." with the error code, a Retry button, and a "Report a bug" email link.
 
 ### Trip planning: stops are nodes, rides are edges
 
@@ -124,11 +126,11 @@ Walk-only results carry `walkOnly: true` and `distance` instead of `legs`. Failu
 
 The invariant `legs[i].alightStop.id === legs[i+1].boardStop.id` holds by construction: the graph has no walk edges, so a transfer can only happen at a stop both routes serve.
 
-The UI splits along the same seam. `App.jsx` owns `currentLeg` as state and derives the current leg object fresh on every render rather than storing both — two sources of truth that can disagree is how you end up showing one leg's route next to another leg's stop count. `ResultsCard` answers "what do I do right now" for the current leg; the map draws the whole trip, because it's the overview.
+The UI splits along the same seam. `App.jsx` owns `currentLeg` as state and derives the current leg object fresh on every render rather than storing both — two sources of truth that can disagree is how you end up showing one leg's route next to another leg's stop count. The same goes for the screen itself: which view to show (waiting, riding, transfer, no buses, and so on) is worked out from existing state on every render rather than stored in a separate state machine. `ResultsCard` answers "what do I do right now" for the current leg; the map draws the whole trip, because it's the overview.
 
 ## Tech stack
 
-**Frontend:** React (Vite), react-leaflet / Leaflet, CARTO basemap tiles over OpenStreetMap data
+**Frontend:** React (Vite), react-leaflet / Leaflet, CARTO basemap tiles over OpenStreetMap data, CSS Modules (no UI library), self-hosted Instrument Sans
 **Proxy:** Node.js, Express, node-fetch
 **Geocoding:** curated landmark table → LocationIQ (→ Nominatim fallback, off by default)
 
@@ -192,14 +194,11 @@ It covers the zero-length path case: when the same stop is the nearest to both e
 
 - **No loop wrap-around.** Routes are circular, but `route.stops` is a flat array and edges only run forward through it. A trip that crosses the loop's seam returns "no route found" even when a bus makes that exact trip. This is the highest-impact known bug.
 - **No walk edges between nearby stops.** Directional variants like `130 Prospect Street (N)` and `(S)` are distinct IDs and unconnected in the graph, so a transfer that amounts to crossing the street is invisible to the search.
-- **No terminal state.** On the final leg the "I'm off" button is suppressed, so there's no way to mark a trip complete.
 - **Proximity thresholds are guesses.** The `stopsRemaining <= 4` gate on both the board and alight buttons was never calibrated against real values.
 - **No ETA validation.** A trip can be planned whose boarding or alighting stop has no inbound buses, or only very distant ones. The planner doesn't check whether a structurally valid route is actually rideable.
 - **No route segment trimming.** The map draws each leg's entire loop rather than just the segment you ride.
-- **Inactive routes are drawn.** The graph filters to `route.active`, but the map's default view renders every route returned by `?inactive=true`, including ones nobody is currently driving.
 - **Autocomplete race condition.** A stale geocoder response can append to the suggestion list after it's no longer relevant.
-- **Dead code.** `greenIcon` is declared in `Map.jsx` and unused; `stops` is passed to `Map` and never read.
-- **No retry for stops/routes.** They're fetched once on load; if that fails (e.g. the proxy is cold-starting on Render), the app shows 0 stops until the page is reloaded.
+- **No automatic retry for stops/routes.** They're fetched once on load; if that fails, the error screen's Retry button reloads the page. A slow Render cold start just shows "Loading routes…" for a while.
 - **ETA cache is uncapped.** The proxy keeps one entry per distinct stop ID requested. Only a concern under abuse; there's no per-IP rate limiting yet.
 - **Existing lint errors.** ESLint flags two synchronous `setState` calls inside effects (`App.jsx`, `Autocomplete.jsx`) and a missing `leg` dependency.
 
@@ -207,15 +206,13 @@ It covers the zero-length path case: when the same stop is the nearest to both e
 
 ### V4 (shipping version)
 
-**Visual and UX overhaul.** The headline item: make it look like an actual app.
-- A fullscreen map (Google Maps style) or a map with a side pane, fully responsive on mobile web.
-- The user's live location on the map.
-- Toggle which routes are shown, or isolate a single route.
-- Real error and empty states: what the user sees when geocoding fails, no buses are running, or the proxy is down. This matters more as the app gets more real.
+**Visual and UX overhaul.** ✅ Done (9/23) — fullscreen map with a mobile bottom sheet and desktop side pane, light/dark themes, and real error and empty states (no route, no buses, arrival times unavailable, server unreachable).
 
 **Proxy caching.** ✅ Done — see [Caching and failure handling](#caching-and-failure-handling).
 
 ### If time allows
+
+**The user's live location on the map**, and **toggling which routes are shown** (or isolating a single route). Both were cut from the V4 redesign to keep it focused.
 
 **Adjustable pins.** Let users drag their start/end pins when the geocoded location is inaccurate.
 
@@ -246,13 +243,15 @@ The core of Yuttler is hand-written. The trip planner (graph, BFS, candidate sel
 
 Launch hardening was AI assisted. The pre-launch reliability work (proxy caching and request coalescing, upstream failure handling, frontend error guards, the zero-length path fix and its test) was written by Claude Code against a spec I wrote. Each change was proposed as a plan, explained line by line, and approved by me before it went in. I'm confident in the changes made here, too.
 
-It's important to note that I am planning on using LLMs to generate code for the UI/UX, though I will still meticulously review changes and ensure I maintain the highest standards for Yuttler. **If anyone reading this is interested in coming on board and helping design the website visually,** I would be more than happy to oblige and remove the AI generated styling. Unfortunately, budget and time constraints mean I can't make this a reality on my own (at the moment).
+The V4 UI/UX was AI generated. Claude Code built it from a design handoff, one step at a time, with each step proposed as a plan, explained, and approved by me before it went in, and tested on mobile and desktop in both themes. **If anyone reading this is interested in coming on board and helping design the website visually,** I would be more than happy to oblige and remove the AI generated styling. Unfortunately, budget and time constraints mean I can't make this a reality on my own (at the moment).
 
 I also used Claude to write and update the other parts of this README. I reviewed the output and everything looked correct. Yes, there are many, many em-dashes!
 
 ## Notes
 
 LocationIQ and Nominatim are both used within their fair-use limits, appropriate for development. Thank you to Nominatim's contributors!
+
+Map data © OpenStreetMap contributors, map tiles © CARTO, place search by LocationIQ.
 
 This project is not affiliated with Yale University or Downtowner.
 
