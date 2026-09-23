@@ -121,7 +121,19 @@ function App() {
   const [endCoords, setEndCoords] = useState(null);
   const [boardedBusId, setBoardedBusId] = useState(null); // remains null until we board a bus
 
-  const [darkMode, setDarkMode] = useState(false);
+  // index.html already picked the theme from localStorage before react loaded, so just read it back
+  const [darkMode, setDarkMode] = useState(() => document.documentElement.dataset.theme === 'dark');
+
+  // whenever the theme changes, apply it to <html> (the css tokens key off data-theme) and remember it
+  useEffect(() => {
+    const theme = darkMode ? 'dark' : 'light';
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem('theme', theme);
+    } catch {
+      // storage blocked (e.g. private mode), theme just won't persist
+    }
+  }, [darkMode]);
 
   const leg = tripResult?.legs?.[currentLeg] ?? null // this is the leg OBJECT, not the index (i.e. currentLeg, which is an index)
   // this replaced the variable tripResult in previous versions, to handle multiple legs in a tripresult

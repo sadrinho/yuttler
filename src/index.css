@@ -1,111 +1,103 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+/* instrument sans is a variable font, so one file covers both 400 and 600.
+   block (not swap) so the wordmark never flashes in a fallback font. the latin file is preloaded in index.html */
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: block;
+  src: url('/fonts/instrument-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+/* accented characters, only downloaded if a place name actually needs them */
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: block;
+  src: url('/fonts/instrument-sans-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+/* design tokens. the theme comes from data-theme on <html> (set in index.html + App.jsx),
+   never from prefers-color-scheme. light is the default if the attribute is missing */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --accent: #00356b; /* yale blue, same in both themes: focus rings, menu band, splash, destination pin */
+  --accent-pressed: #0a4a8f;
+  --accent-fill: #00356b; /* primary button fill */
+  --accent-text: #00356b; /* accent text + hero numerals */
+
+  --ink: #11161c;
+  --text-secondary: #4b5560;
+  --text-tertiary: #6b7480; /* not in the token table, but the design uses it everywhere (location arrow, "3 stops away") */
+  --text-muted: #8a929c;
+  --text-muted-2: #9aa1ab;
+
+  --surface: #ffffff;
+  --canvas: #e9eaec;
+  --field: #f2f4f7;
+  --field-border: #e4e6ea;
+  --divider: #edeff2;
+  --skeleton: #e6e9ee;
+  --disabled-bg: #e8ebef;
+
+  /* the gentle "please select a start and end location" warning */
+  --warning-bg: #fdf6e9;
+  --warning-border: #e6c77a;
+  --warning-text: #8a5a08;
+
+  --shadow-popup: 0 6px 18px rgba(8, 20, 35, 0.22);
+  --shadow-menu: 14px 0 40px rgba(8, 20, 35, 0.28);
+  --backdrop: rgba(8, 20, 35, 0.42);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --accent-fill: #0a4a8f;
+  --accent-text: #8fb8e4; /* deep blue is unreadable on dark panels */
+
+  --ink: #f2f4f7;
+  --text-secondary: #c2c9d2;
+  --text-tertiary: #8b95a1;
+  --text-muted: #8b95a1;
+  --text-muted-2: #6b7480;
+
+  --surface: #1a1e24;
+  --canvas: #12151a;
+  --field: #22272e;
+  --field-border: #282e36;
+  --divider: #282e36;
+  --skeleton: #22272e;
+  --disabled-bg: #22272e;
+
+  /* the design doesn't have a dark warning, so these are my muted amber guesses */
+  --warning-bg: #2a2418;
+  --warning-border: #6b5520;
+  --warning-text: #e6c77a;
+
+  --shadow-popup: 0 6px 18px rgba(0, 0, 0, 0.5);
+  --shadow-menu: 14px 0 40px rgba(0, 0, 0, 0.55);
+  --backdrop: rgba(4, 6, 9, 0.58);
 }
 
 body {
   margin: 0;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* form controls don't inherit the font by default */
+button,
+input {
+  font: inherit;
 }
