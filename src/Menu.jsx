@@ -127,6 +127,16 @@ function Menu({
             <p className={styles.credit}>
               Made with love by Sadra Aliakbarpour &lt;3
             </p>
+            <p className={styles.credit}>
+              Visit the{" "}
+              <a
+                href="https://github.com/sadrinho/yuttler/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                GitHub repository
+              </a>
+            </p>
             {/* deliberately small and gray so it doesn't read as tappable */}
             <p className={styles.stats}>
               Loaded {stopCount} stops, {routeCount} routes, {busCount} buses
