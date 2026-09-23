@@ -7,6 +7,7 @@ import card from "./ResultsCard.module.css";
 import { routeColor } from "./routeColor";
 import Splash from "./Splash";
 import Menu from "./Menu";
+import { useSheetDrag } from "./useSheetDrag";
 
 function MenuIcon() {
   // the three hamburger bars, used by both the floating (mobile) and in-pane (desktop) menu buttons
@@ -234,7 +235,7 @@ function App() {
   const [buses, setBuses] = useState([]);
   const [boardEtas, setBoardEtas] = useState([]);
   const [etaFailed, setEtaFailed] = useState(false); // true when the last eta fetch failed, so ResultsCard shows ... instead of "no buses"
-  const [loading, setLoading] = useState(true); // true until stops + routes have loaded (or failed): shows the splash
+  const [loading, setLoading] = useState(true); // true until stops + routes have loaded (or failed): find route waits for it
   const [loadError, setLoadError] = useState(null); // { status } if they failed (status is null for a network error): shows load failed
   const [etasFor, setEtasFor] = useState(null); // { trip, stopId } the current boardEtas came from, so we know when they're for the stop we're showing (skeleton until then)
   const [currentLeg, setCurrentLeg] = useState(0); // used to determine what leg of a trip a user is on (i.e. for direct trips, remains at 0)
@@ -246,6 +247,9 @@ function App() {
 
   // index.html already picked the theme from localStorage before react loaded, so just read it back
   const [panelExpanded, setPanelExpanded] = useState(true); // mobile only: bottom sheet open vs collapsed to its one-line bar. desktop ignores it
+  const panelRef = useRef(null);
+  const sheetDrag = useSheetDrag(panelRef, setPanelExpanded); // drag the sheet down by its handle / header (mobile)
+  const barSwipe = useRef(null); // where a touch on the collapsed bar started, to spot a swipe up
   const [cancelArmed, setCancelArmed] = useState(false); // true after the first tap on the X: it's showing "Cancel trip" and the next tap ends the trip
   const cancelRef = useRef(null);
 
@@ -571,7 +575,17 @@ function App() {
       {/* mobile: the one-line bar you see when the sheet is hidden. the whole bar is the tap target */}
       <div
         className={`${styles.collapsedBar} ${panelExpanded ? "" : styles.collapsedBarShown}`}
+        // swiping up on the bar opens the sheet too (a tap already does, via the button)
+        onPointerDown={(e) => {
+          barSwipe.current = e.clientY;
+        }}
+        onPointerUp={(e) => {
+          if (barSwipe.current !== null && barSwipe.current - e.clientY > 20)
+            setPanelExpanded(true);
+          barSwipe.current = null;
+        }}
       >
+        <div className={styles.sheetHandle} aria-hidden="true" />
         <button
           type="button"
           className={styles.summaryButton}
@@ -596,14 +610,19 @@ function App() {
 
       {/* the panel: bottom sheet on mobile, fixed 400px left pane on desktop */}
       <aside
+        ref={panelRef}
         className={`${styles.panel} ${panelExpanded ? "" : styles.panelCollapsed}`}
+        {...sheetDrag} // pointer handlers for dragging the sheet down (they ignore everything outside the drag zone)
         // pressing a button normally steals focus from the field you're typing in, which shrinks the sheet mid-tap
         // and the click lands somewhere else. stopping that focus move keeps everything still until the click happens
         onMouseDown={(e) => {
           if (e.target.closest("button")) e.preventDefault();
         }}
       >
-        <div className={styles.panelHeader}>
+        {/* mobile: grab handle. it and the header row's empty space are where a drag can start */}
+        <div className={styles.sheetHandle} data-drag-zone aria-hidden="true" />
+
+        <div className={styles.panelHeader} data-drag-zone>
           {/* desktop only: menu button + wordmark at the top of the pane */}
           <button
             type="button"
@@ -693,6 +712,7 @@ function App() {
             <>
               <button
                 className={styles.primaryButton}
+                disabled={loading} // no stops/routes yet: a search now would wrongly say "no route found"
                 onClick={() => {
                   document.activeElement?.blur();
                   handleSearch();
@@ -706,7 +726,9 @@ function App() {
               >
                 {showValidation
                   ? "Please select a start and end location"
-                  : "Enter a start and end location above"}
+                  : loading
+                    ? "Loading routes…"
+                    : "Enter a start and end location above"}
               </p>
             </>
           ) : (
@@ -741,8 +763,8 @@ function App() {
         busCount={buses.length}
       />
 
-      {/* over everything until stops + routes are in; stays up as "load failed" if they never arrive */}
-      {(loading || loadError) && <Splash error={loadError} />}
+      {/* no loading splash (it only flickered on fast loads): the app shows straight away. full screen only if loading failed */}
+      {loadError && <Splash error={loadError} />}
     </>
   );
 }

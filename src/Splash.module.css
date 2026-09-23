@@ -1,17 +1,16 @@
-/* loading splash + load failed. yale blue and white in both themes (the only fully saturated screen in the app).
+/* load failed screen. yale blue and white in both themes (the only fully saturated screen in the app).
    mobile sizes first, desktop steps up in the media query */
 
 .splash {
   position: fixed;
   inset: 0;
-  z-index: 100; /* over the map and panel, which load underneath so tiles are ready when this goes away */
+  z-index: 100; /* over everything */
   box-sizing: border-box;
   padding: 0 40px;
   background: var(--accent);
   color: #ffffff;
   text-align: center;
-  /* the wordmark sits in the exact middle row, and the spinner / error hangs off the row below it,
-     so the wordmark never moves when loading turns into load failed (per the design) */
+  /* the wordmark sits in the exact middle row and the error hangs off the row below it */
   display: grid;
   grid-template-rows: 1fr auto 1fr;
   justify-items: center;
@@ -47,29 +46,6 @@
   font-weight: 600;
   letter-spacing: -0.03em;
   line-height: 1;
-}
-
-.spinner {
-  width: 34px;
-  height: 34px;
-  box-sizing: border-box;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.22);
-  border-top-color: #ffffff;
-  animation: spin 900ms linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* reduce motion: the global rule in index.css stops the spin; show a still, dimmed ring instead */
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    opacity: 0.4;
-  }
 }
 
 /* ---------- load failed ---------- */
@@ -164,10 +140,5 @@
   .wordmark {
     font-size: 76px;
     letter-spacing: -0.035em;
-  }
-
-  .spinner {
-    width: 40px;
-    height: 40px;
   }
 }
