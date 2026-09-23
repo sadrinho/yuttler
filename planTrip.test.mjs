@@ -1,7 +1,7 @@
 // standalone test harness for planTrip. run with: node planTrip.test.mjs
 // uses toy stops ~1.1km apart so results are hand-verifiable, not live data
 import assert from 'node:assert/strict'
-import { planTrip } from './src/tripPlanner.js'
+import { planTrip, markRunningRoutes } from './src/tripPlanner.js'
 
 let passed = 0
 function test(name, fn) {
@@ -86,6 +86,24 @@ test('running stops near both ends but no way between them -> noConnection', () 
   const onlyC = { id: 10, name: 'OnlyC', active: true, stops: [3] }
   const result = planTrip(41.300, -72.93, 41.320, -72.93, [A, C], [onlyA, onlyC])
   assert.equal(result.reason, 'noConnection')
+})
+
+// ---- "running" = has a bus on it right now ----
+
+test('at a shift change, the route with a bus wins over the stale "active" one', () => {
+  // the 6pm hopper -> pwg case: Day is flagged active with no buses, Night is flagged inactive with a bus on it
+  const day = { id: 30, name: 'Day', active: true, stops: [1, 2, 3] }
+  const night = { id: 31, name: 'Night', active: false, stops: [1, 2, 3] }
+  const buses = [{ id: 100, route: 31 }]
+  const result = planTrip(41.300, -72.93, 41.320, -72.93, [A, B, C], markRunningRoutes([day, night], buses))
+  assert.equal(result.success, true)
+  assert.equal(result.legs[0].route.name, 'Night')
+})
+
+test('no bus data yet -> keep the feed\'s active flags instead of saying nothing runs', () => {
+  const routes = [{ id: 30, name: 'Day', active: true, stops: [1, 2, 3] }]
+  assert.equal(markRunningRoutes(routes, []), routes) // the very same list, untouched
+  assert.equal(markRunningRoutes(routes, undefined), routes)
 })
 
 console.log(`\n${passed} passed`)

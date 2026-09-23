@@ -294,6 +294,15 @@ function explainNoRoute(activeRoutes, allRoutes, stops, startLat, startLon, endL
   return { reason: 'noConnection' }
 }
 
+// the feed's route.active flag lags the real schedule around shift changes: at 6pm the daytime Blue was still "active" with
+// no buses on it, and the night Blue "inactive" with one. so treat a route as running if a bus is on it right now.
+// if there's no bus data (not loaded yet, or the feed failed), keep the flags as they are rather than saying nothing runs
+function markRunningRoutes(routes, buses) {
+  if (!buses || buses.length === 0) return routes
+  const routesWithBuses = new Set(buses.map(bus => bus.route))
+  return routes.map(route => ({ ...route, active: routesWithBuses.has(route.id) }))
+}
+
 function getNearestStops(lat, lon, stops, count) { // self explanatory
   return stops 
     // return an array of stops but we've appended the distance between stops 
@@ -305,4 +314,4 @@ function getNearestStops(lat, lon, stops, count) { // self explanatory
     .slice(0, count)
 }
 
-export { planTrip, YALE_PLACES, findPlaceMatches, buildGraph, findPath, reconstructPath} // reminder: tells other files how to import this. named export as planTrip
+export { planTrip, markRunningRoutes, YALE_PLACES, findPlaceMatches, buildGraph, findPath, reconstructPath} // reminder: tells other files how to import this. named export as planTrip

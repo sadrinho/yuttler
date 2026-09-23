@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { planTrip } from "./tripPlanner";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { planTrip, markRunningRoutes } from "./tripPlanner";
 import Autocomplete from "./Autocomplete";
 import Map, { ATTRIBUTION } from "./Map";
 import styles from "./App.module.css";
@@ -344,6 +344,10 @@ function App() {
 
   const trackedBus = buses.find((bus) => bus.id === trackedBusId);
 
+  // routes with `active` meaning "a bus is on it right now" instead of the feed's lagging flag (see markRunningRoutes).
+  // used by both the planner and the map. only recomputed when routes or buses change (i.e. every 10s bus poll)
+  const runningRoutes = useMemo(() => markRunningRoutes(routes, buses), [routes, buses]);
+
   useEffect(() => {
     // this runs in response to something SPECIFIC, not every render
 
@@ -458,7 +462,7 @@ function App() {
       endCoords.lat,
       endCoords.lon,
       stops,
-      routes,
+      runningRoutes, // "active" = has a bus on it right now (see markRunningRoutes)
     );
 
     setTripResult(result);
@@ -580,7 +584,7 @@ function App() {
       <div className={styles.mapArea}>
         <Map
           tripResult={tripResult}
-          routes={routes}
+          routes={runningRoutes} // same "running" as the planner, so the map shows the routes that actually have buses
           darkMode={darkMode}
           buses={buses}
         />
