@@ -2,8 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <!-- viewport-fit=cover: when opened from the home screen, draw edge to edge. the layout already keeps clear of the
+         notch / home bar with env(safe-area-inset-*) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- add to home screen: app name, icons, and open full-screen without the browser bar -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="yuttler." />
+    <!-- default = normal status bar above the app, so the map and menu button never sit under the clock -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="description" content="Live trip planner for Yale's Downtowner shuttle: which stop to walk to, when your bus is coming, and when to get off." />
     <!-- browser toolbar color on phones. the theme is a manual toggle (not the OS setting), so the script below and
          App.jsx set it to match instead of using a light/dark media pair -->
