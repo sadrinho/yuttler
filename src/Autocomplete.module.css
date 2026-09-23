@@ -1,0 +1,142 @@
+/* one search field + its suggestions. the dropdown sits in the normal flow under its field,
+   so it pushes "Find route" down instead of covering it (per the design) */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---------- field ---------- */
+
+.field {
+  height: 50px;
+  box-sizing: border-box;
+  border-radius: 15px;
+  background: var(--field);
+  border: 1.5px solid var(--field-border);
+  /* 3px right (not the design's 6px) because the location button is 44px instead of 38px: the icon lands in the same spot */
+  padding: 0 3px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* :focus-within is fine here: the only other thing inside is the location button, which can't take focus on press (see App's panel) */
+.field:focus-within {
+  background: var(--surface);
+  border: 2px solid var(--focus-border);
+  padding-left: 15px; /* 1px less to make up for the thicker border, so the text doesn't shift */
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+/* "please select a start and end location" and this field is the one missing.
+   once you tap into it, the normal focus style wins, since you're fixing it */
+.invalid:not(:focus-within) {
+  background: var(--warning-bg);
+  border: 1.5px solid var(--warning-border);
+  padding-left: 16px;
+  box-shadow: none;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px; /* 16 on phones too: anything smaller makes ios safari zoom the page on focus */
+  text-overflow: ellipsis;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.locationButton {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.field:focus-within .locationButton {
+  color: var(--focus-border);
+}
+
+.locationButton:focus-visible {
+  outline: 2px solid var(--focus-border);
+  outline-offset: -2px;
+}
+
+/* ---------- dropdown ---------- */
+
+.dropdown {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid var(--field-border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.row {
+  min-height: 54px;
+  box-sizing: border-box;
+  padding: 8px 16px; /* two-line rows grow to fit */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.row + .row {
+  border-top: 1px solid var(--divider);
+}
+
+/* not in the design, but rows need some feedback when you hover/tap them */
+.row:hover,
+.row:active {
+  background: var(--field);
+}
+
+.name,
+.address,
+.searchRow {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.address {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.searchRow {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  color: var(--text-secondary);
+}
+
+.searchRow svg {
+  flex: none;
+}

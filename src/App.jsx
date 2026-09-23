@@ -288,6 +288,12 @@ function App() {
     : (targetIndex - busIndex + routeLen) % routeLen
   }
 
+  // search state = nothing searched yet, or handleSearch's "please select" message (which shows in the hint slot, not as a result)
+  const isValidationMessage = tripResult?.success === false && tripResult.message === "Please select a start and end location"
+  const inSearchState = !tripResult || isValidationMessage
+  // only warn while a field is actually still missing, so picking the missing place clears the warning straight away
+  const showValidation = isValidationMessage && (!startCoords || !endCoords)
+
   // mobile vs desktop is decided purely in App.module.css (one breakpoint at 1024px), so everything below renders on both
   // and css hides whatever doesn't belong. no js width checks = nothing jumps on load
   return (
@@ -347,17 +353,27 @@ function App() {
         </div>
 
         <div className={styles.panelBody}>
+        <div className={styles.fields}>
         <Autocomplete
           placeholder="Where are you starting from?"
           onSelect={(suggestion) => setStartCoords (suggestion)}
+          invalid={showValidation && !startCoords}
         />
         <Autocomplete
           placeholder="Where are you going?"
           onSelect={(suggestion) => setEndCoords(suggestion)}
+          invalid={showValidation && !endCoords}
         />
+        </div>
 
-        <button onClick={() => { document.activeElement?.blur(); handleSearch(); }}>Find Route</button> {/* blur so the keyboard closes and the sheet settles once the search runs */}
+        <button className={styles.primaryButton} onClick={() => { document.activeElement?.blur(); handleSearch(); }}>Find route</button> {/* blur so the keyboard closes and the sheet settles once the search runs */}
 
+        {/* search state: the hint (or the warning, in the same one-line slot so nothing moves). any other state: the results */}
+        {inSearchState ? (
+          <p className={`${styles.hint} ${showValidation ? styles.hintWarning : ''}`}>
+            {showValidation ? "Please select a start and end location" : "Enter a start and end location above"}
+          </p>
+        ) : (
       <ResultsCard
         result={tripResult} // really only useful for checking if walk-only or if null bc guard rn checks if tripresult is null, not leg (but if tripresult is null that should imply the latter is null too)
         leg={leg} // our leg object
@@ -371,6 +387,7 @@ function App() {
         stopsRemaining= {stopsRemaining}
         etaFailed={etaFailed} // true if the last eta fetch failed
       />
+        )}
 
         {/* both of these move into the hamburger menu later, they just live here for now */}
         <button onClick={() => setDarkMode(!darkMode)}>

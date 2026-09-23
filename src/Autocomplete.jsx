@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { YALE_PLACES, findPlaceMatches } from './tripPlanner'
+import styles from './Autocomplete.module.css'
 
-function Autocomplete({ placeholder, onSelect }) {
+function Autocomplete({ placeholder, onSelect, invalid }) { // invalid = warm warning style when "find route" was pressed without this field picked
   // dropdown autocomplete for user inputs in the start/end fields
   
   // placeholder is just the greyed out text we use before we start typing
@@ -94,10 +95,11 @@ function Autocomplete({ placeholder, onSelect }) {
   }
 
   return (
-    // not sure what position relative means
-    // A: basically our anchor point for our later absolute position of the dropdown so it actually overlaps something
-    <div style={{ position: 'relative' }}> 
-      <input 
+    // the dropdown used to be position: absolute over the page; now it sits in the normal flow under the field and pushes things down (per the design)
+    <div className={styles.wrapper}>
+      <div className={`${styles.field} ${invalid ? styles.invalid : ''}`}>
+      <input
+        className={styles.input}
         placeholder={placeholder}
         value={input}
         onChange={e => { //updates shown text on input
@@ -109,31 +111,28 @@ function Autocomplete({ placeholder, onSelect }) {
         // 150ms timeout to help protect against the element disappearing when we need it (i.e. in the case of selecting smth)
         onKeyDown={e => { if (e.key === 'Enter' && showSearchRow) geocode(input) }} // enter does the same as tapping the search row
       />
-      <button type="button" onClick={handleUseLocation}>📍</button>
-      {show && suggestions.length > 0 && ( 
+      <button type="button" className={styles.locationButton} onClick={handleUseLocation} aria-label="Use current location">
+        {/* location arrow, color comes from css (gray, accent while the field is focused) */}
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
+          <polygon points="21,3 3,10.5 10.2,13.8 13.5,21" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+      </button>
+      </div>
+      {show && suggestions.length > 0 && (
         // Q: not sure why we do the second &&
         // A: two separate conditions: show = user is focused, suggestions.length > 0 = theres something to show
-        <ul style={{
-          position: 'absolute',
-          background: 'white',
-          border: '1px solid #ccc',
-          listStyle: 'none',
-          margin: 0,
-          padding: 0,
-          width: '100%',
-          zIndex: 1000
-        }}>
-          {suggestions.map(s => ( 
+        <ul className={styles.dropdown}>
+          {suggestions.slice(0, 5).map(s => ( // design shows at most 5 places (then the search row), so the list never fills the screen
             <li //TODO: fix bug. stale fetch response can append to results when no longer helpful, "async race condition"
               key={`[${suggestions.indexOf(s)}]-${s.name}-${s.lat}`} // should be 100% unique
-              onMouseDown={() => handleSelect(s)} 
+              onMouseDown={() => handleSelect(s)}
               // Q: why do we use onMouseDown and not onClick?
               // A: if we use onClick, onBlur fires because we lost focus, closes the dropdown, onClick then fires, but our dropdown is gone.
-              style={{ padding: '8px', cursor: 'pointer' }}
+              className={styles.row}
             >
-              <div>{s.name}</div>
-              {s.address && ( // landmarks (and streets) don't have one, so they look the same as before
-                <div style={{ fontSize: '0.8em', color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.address}</div> // one line with ... so it doesn't wrap on mobile
+              <span className={styles.name}>{s.name}</span>
+              {s.address && ( // landmarks (and streets) don't have one, so they stay single-line
+                <span className={styles.address}>{s.address}</span> // one line with ... so it doesn't wrap on mobile
               )}
             </li>
           ))}
@@ -141,9 +140,13 @@ function Autocomplete({ placeholder, onSelect }) {
             <li // not part of suggestions, so it can never be selected as a place
               key="search-row"
               onMouseDown={e => { e.preventDefault(); geocode(input) }} // preventDefault keeps focus in the input so the dropdown stays open for the results
-              style={{ padding: '8px', cursor: 'pointer', borderTop: '1px solid #eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} // long queries get cut off with ... instead of wrapping on mobile
+              className={`${styles.row} ${styles.searchRow}`}
             >
-              🔍 Search "{input.trim()}"
+              <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+                <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="2.2" />
+                <line x1="15.5" y1="15.5" x2="20" y2="20" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              </svg>
+              <span className={styles.name}>Search "{input.trim()}"</span> {/* long queries get cut off with ... instead of wrapping on mobile */}
             </li>
           )}
         </ul>

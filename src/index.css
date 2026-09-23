@@ -59,6 +59,8 @@
   --shadow-menu-button: 0 4px 14px rgba(8, 20, 35, 0.18);
   --menu-button-bg: #ffffff;
   --attribution-bg: rgba(255, 255, 255, 0.78);
+  --focus-border: #00356b; /* focused search field */
+  --focus-ring: rgba(0, 53, 107, 0.09);
 }
 
 :root[data-theme='dark'] {
@@ -94,6 +96,8 @@
   --shadow-menu-button: 0 4px 14px rgba(0, 0, 0, 0.45);
   --menu-button-bg: #1e232a;
   --attribution-bg: rgba(10, 12, 16, 0.7);
+  --focus-border: #8fb8e4; /* no dark focused field in the design, and yale blue disappears on dark */
+  --focus-ring: rgba(143, 184, 228, 0.15);
 }
 
 /* the page itself never scrolls; the map fills the screen and only the panel scrolls inside itself */

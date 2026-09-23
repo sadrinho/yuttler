@@ -218,11 +218,58 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* a scrolling box clips everything outside it, including the 4px focus ring on the fields.
+     6px of padding (cancelled by the negative margin) gives the ring room without moving anything */
+  margin: -6px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
+/* ---------- search ---------- */
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* full-width primary pill. shared by later steps (I'm on board, Done, Retry...) */
+.primaryButton {
+  width: 100%;
+  height: 52px;
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-fill);
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+}
+
+.primaryButton:active {
+  background: var(--accent-pressed);
+}
+
+/* one line, same height for the hint and the warning, so swapping them moves nothing */
+.hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* gentle amber, not a red alarm */
+.hintWarning {
+  font-weight: 600;
+  color: var(--warning-text);
+}
+
+.primaryButton:focus-visible,
 .floatingMenuButton:focus-visible,
 .paneMenuButton:focus-visible,
 .summaryButton:focus-visible,
