@@ -59,10 +59,10 @@
 
 /* ---------- hero ---------- */
 
-/* mobile: hero on the left, later buses on the right, bottoms lined up */
+/* mobile: hero on the left, later buses on the right, tops lined up (see .later) */
 .etaRow {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 22px;
 }
 
@@ -107,13 +107,16 @@
   text-overflow: ellipsis;
 }
 
+/* right-aligned, and nudged down so the first line's capitals start exactly where the hero digits do.
+   measured from instrument sans: digits start 7.2px into the 58px hero line, caps start 3.2px into a 14px line, so 4px */
 .later {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-bottom: 4px;
+  padding-top: 4px;
+  text-align: right;
 }
 
 .laterSlot {
@@ -235,7 +238,8 @@
 
   .later {
     gap: 8px;
-    padding-bottom: 0;
+    padding-top: 0;
+    text-align: left; /* stacked under the hero here, so nothing to line up with */
   }
 
   .laterSlot {

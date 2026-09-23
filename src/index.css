@@ -63,6 +63,8 @@
   --focus-ring: rgba(0, 53, 107, 0.09);
   --banner-bg: #eaf0f7; /* transfer banner */
   --banner-text: #00356b;
+  --danger-bg: #fcebea; /* armed "Cancel trip" button */
+  --danger-text: #b42318;
 }
 
 :root[data-theme='dark'] {
@@ -102,6 +104,8 @@
   --focus-ring: rgba(143, 184, 228, 0.15);
   --banner-bg: #22272e;
   --banner-text: #8fb8e4;
+  --danger-bg: #3a2225;
+  --danger-text: #f4a29b;
 }
 
 /* the page itself never scrolls; the map fills the screen and only the panel scrolls inside itself */

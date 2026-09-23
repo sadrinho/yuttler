@@ -132,7 +132,7 @@
   gap: 12px;
   text-align: left;
   color: var(--ink);
-  font-size: 17px;
+  font-size: 19px; /* a touch bigger than the design's 17, easier to read at a glance */
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.2;
@@ -279,6 +279,21 @@
   cursor: pointer;
 }
 
+/* the X after its first tap during a bus trip: same pill as Hide, but soft red. tapping it again cancels */
+.cancelArmed {
+  height: 44px;
+  flex: none;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 .fieldsCompact {
   gap: 8px;
 }
@@ -331,6 +346,7 @@
 
 .primaryButton:focus-visible,
 .iconButton:focus-visible,
+.cancelArmed:focus-visible,
 .floatingMenuButton:focus-visible,
 .paneMenuButton:focus-visible,
 .summaryButton:focus-visible,
