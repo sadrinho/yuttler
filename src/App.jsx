@@ -5,6 +5,7 @@ import Map, { ATTRIBUTION } from "./Map";
 import styles from "./App.module.css";
 import card from "./ResultsCard.module.css";
 import { routeColor } from "./routeColor";
+import Splash from "./Splash";
 
 function MenuIcon() {
   // the three hamburger bars, used by both the floating (mobile) and in-pane (desktop) menu buttons
@@ -232,6 +233,8 @@ function App() {
   const [buses, setBuses] = useState([]);
   const [boardEtas, setBoardEtas] = useState([]);
   const [etaFailed, setEtaFailed] = useState(false); // true when the last eta fetch failed, so ResultsCard shows ... instead of "no buses"
+  const [loading, setLoading] = useState(true); // true until stops + routes have loaded (or failed): shows the splash
+  const [loadError, setLoadError] = useState(null); // { status } if they failed (status is null for a network error): shows load failed
   const [etasFor, setEtasFor] = useState(null); // { trip, stopId } the current boardEtas came from, so we know when they're for the stop we're showing (skeleton until then)
   const [currentLeg, setCurrentLeg] = useState(0); // used to determine what leg of a trip a user is on (i.e. for direct trips, remains at 0)
 
@@ -294,18 +297,36 @@ function App() {
 
   useEffect(() => {
     // this runs in response to something SPECIFIC, not every render
+
+    // fetches one list from the proxy. anything other than an OK response with an array in it counts as a failure,
+    // so the splash can switch to "couldn't reach the server" instead of the app quietly showing 0 stops
+    function getList(path) {
+      return fetch(`${import.meta.env.VITE_PROXY_URL}${path}`) // import.meta.env.VITE_PROXY_URL for referencing the correct back-end url according to VITE_PROXY_URL in our dotenv
+        .then((r) => {
+          if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { status: r.status }); // e.g. the proxy's 502 when downtowner is down; keep the code to show
+          return r.json(); // parse and return the body
+        })
+        .then((data) => {
+          if (!Array.isArray(data)) throw new Error("Expected a list"); // proxy sends { error } instead of an array when downtowner is down
+          return data;
+        });
+    }
+
     Promise.all([
       // make sure both return something before moving on (both promises are fulfilled)
-      fetch(`${import.meta.env.VITE_PROXY_URL}/stops`).then((r) => r.json()), // fetch http response object, then parse and return r.json()
-      // import.meta.env.VITE_PROXY_URL for referencing the correct back-end url according to VITE_PROXY_URL in our dotenv
-      fetch(`${import.meta.env.VITE_PROXY_URL}/routes`).then((r) => r.json()), // index 1
+      getList("/stops"),
+      getList("/routes"), // index 1
     ])
       .then(([stopsData, routesData]) => {
         // ordered; stopsData = result[0], routesData = result[1]
-        if (Array.isArray(stopsData)) setStops(stopsData); // proxy sends { error } instead of an array when downtowner is down; keep [] rather than storing that
-        if (Array.isArray(routesData)) setRoutes(routesData);
+        setStops(stopsData);
+        setRoutes(routesData);
       })
-      .catch((err) => console.error("Failed to load stops/routes:", err)); // network failure or non-JSON body; without this it's an unhandled rejection
+      .catch((err) => {
+        console.error("Failed to load stops/routes:", err); // network failure, non-OK status, or non-JSON body
+        setLoadError({ status: err.status ?? null }); // no status = network error
+      })
+      .finally(() => setLoading(false)); // splash goes away either way (to the app, or to the load failed screen)
   }, []); // [] is the dependency array indicating that specific thing, but sicne it's empty, it runs exactly once
 
   useEffect(() => {
@@ -584,7 +605,7 @@ function App() {
           >
             <MenuIcon />
           </button>
-          <div className={styles.wordmark}>Yuttler</div>
+          <div className={styles.wordmark}>yuttler.</div>
 
           {/* cancel X: left on mobile, far right on desktop. shown in every result state; the only way out of a trip.
               same button element in both looks (X, then the armed "Cancel trip" pill), so it doesn't remount between taps */}
@@ -709,6 +730,9 @@ function App() {
           </p>
         </div>
       </aside>
+
+      {/* over everything until stops + routes are in; stays up as "load failed" if they never arrive */}
+      {(loading || loadError) && <Splash error={loadError} />}
     </>
   );
 }
