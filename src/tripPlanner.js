@@ -296,9 +296,10 @@ function explainNoRoute(activeRoutes, allRoutes, stops, startLat, startLon, endL
 
 // the feed's route.active flag lags the real schedule around shift changes: at 6pm the daytime Blue was still "active" with
 // no buses on it, and the night Blue "inactive" with one. so treat a route as running if a bus is on it right now.
-// if there's no bus data (not loaded yet, or the feed failed), keep the flags as they are rather than saying nothing runs
+// buses = null/undefined means no bus data yet (still loading): keep the flags as they are rather than saying nothing runs.
+// an empty list is real data: no buses are running (e.g. after service ends), so no route counts as running
 function markRunningRoutes(routes, buses) {
-  if (!buses || buses.length === 0) return routes
+  if (!buses) return routes
   const routesWithBuses = new Set(buses.map(bus => bus.route))
   return routes.map(route => ({ ...route, active: routesWithBuses.has(route.id) }))
 }

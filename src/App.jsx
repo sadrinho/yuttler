@@ -260,6 +260,7 @@ function App() {
   */
   const [routes, setRoutes] = useState([]);
   const [buses, setBuses] = useState([]);
+  const [busesLoaded, setBusesLoaded] = useState(false); // true after the first good /buses answer, so an empty list can mean "no buses running" rather than "not loaded yet"
   const [boardEtas, setBoardEtas] = useState([]);
   const [etaFailed, setEtaFailed] = useState(false); // true when the last eta fetch failed, so ResultsCard shows ... instead of "no buses"
   const [loading, setLoading] = useState(true); // true until stops + routes have loaded (or failed): find route waits for it
@@ -346,7 +347,11 @@ function App() {
 
   // routes with `active` meaning "a bus is on it right now" instead of the feed's lagging flag (see markRunningRoutes).
   // used by both the planner and the map. only recomputed when routes or buses change (i.e. every 10s bus poll)
-  const runningRoutes = useMemo(() => markRunningRoutes(routes, buses), [routes, buses]);
+  // before the first bus answer we pass null ("no data yet", keep the feed's flags); after it, the real list, even if it's empty
+  const runningRoutes = useMemo(
+    () => markRunningRoutes(routes, busesLoaded ? buses : null),
+    [routes, buses, busesLoaded],
+  );
 
   useEffect(() => {
     // this runs in response to something SPECIFIC, not every render
@@ -388,7 +393,10 @@ function App() {
       fetch(`${import.meta.env.VITE_PROXY_URL}/buses`)
         .then((r) => r.json())
         .then((data) => {
-          if (Array.isArray(data)) setBuses(data); // on { error }, keep the last positions; stale buses beat a crash in Map.jsx's buses.filter
+          if (Array.isArray(data)) {
+            setBuses(data);
+            setBusesLoaded(true);
+          } // on { error }, keep the last positions; stale buses beat a crash in Map.jsx's buses.filter
         })
         .catch((err) => console.error("Failed to load buses:", err)); // next poll in 10s gets another shot
     }

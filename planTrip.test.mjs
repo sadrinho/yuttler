@@ -102,8 +102,16 @@ test('at a shift change, the route with a bus wins over the stale "active" one',
 
 test('no bus data yet -> keep the feed\'s active flags instead of saying nothing runs', () => {
   const routes = [{ id: 30, name: 'Day', active: true, stops: [1, 2, 3] }]
-  assert.equal(markRunningRoutes(routes, []), routes) // the very same list, untouched
+  assert.equal(markRunningRoutes(routes, null), routes) // the very same list, untouched
   assert.equal(markRunningRoutes(routes, undefined), routes)
+})
+
+test('bus data loaded but empty (service over) -> nothing counts as running, even if flagged active', () => {
+  // the end-of-service case: every bus has gone home but the feed still flags Day as active
+  const day = { id: 30, name: 'Day', active: true, stops: [1, 2, 3] }
+  const result = planTrip(41.300, -72.93, 41.320, -72.93, [A, B, C], markRunningRoutes([day], []))
+  assert.equal(result.success, false)
+  assert.equal(result.reason, 'noService')
 })
 
 console.log(`\n${passed} passed`)
