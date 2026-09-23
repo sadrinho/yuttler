@@ -29,3 +29,8 @@ dist-ssr
 
 mailmap.txt
 LAUNCH_SPEC.md
+handoff.md
+design_handoff/
+.claude/design/MapBase.dc.html
+.claude/design/support.js
+.claude/design/Yuttler.dc.html
