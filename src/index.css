@@ -73,6 +73,12 @@
   --shadow-bus: 0 2px 6px rgba(8, 20, 35, 0.3);
   --shadow-stop: 0 1px 4px rgba(8, 20, 35, 0.28);
   --shadow-pin: 0 3px 8px rgba(8, 20, 35, 0.32);
+
+  /* hamburger menu */
+  --segment-selected: #ffffff; /* selected half of the theme toggle */
+  --shadow-thumb: 0 1px 4px rgba(8, 20, 35, 0.14);
+  --menu-credit: #6b7480;
+  --menu-stats: #9aa1ab;
 }
 
 :root[data-theme='dark'] {
@@ -121,6 +127,11 @@
   --shadow-bus: 0 2px 6px rgba(0, 0, 0, 0.55);
   --shadow-stop: 0 1px 4px rgba(0, 0, 0, 0.5);
   --shadow-pin: 0 3px 8px rgba(0, 0, 0, 0.6);
+
+  --segment-selected: #323a44;
+  --shadow-thumb: none;
+  --menu-credit: #c2c9d2;
+  --menu-stats: #8b95a1;
 }
 
 /* the page itself never scrolls; the map fills the screen and only the panel scrolls inside itself */

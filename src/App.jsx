@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { planTrip } from "./tripPlanner";
 import Autocomplete from "./Autocomplete";
 import Map, { ATTRIBUTION } from "./Map";
@@ -6,6 +6,7 @@ import styles from "./App.module.css";
 import card from "./ResultsCard.module.css";
 import { routeColor } from "./routeColor";
 import Splash from "./Splash";
+import Menu from "./Menu";
 
 function MenuIcon() {
   // the three hamburger bars, used by both the floating (mobile) and in-pane (desktop) menu buttons
@@ -247,6 +248,23 @@ function App() {
   const [panelExpanded, setPanelExpanded] = useState(true); // mobile only: bottom sheet open vs collapsed to its one-line bar. desktop ignores it
   const [cancelArmed, setCancelArmed] = useState(false); // true after the first tap on the X: it's showing "Cancel trip" and the next tap ends the trip
   const cancelRef = useRef(null);
+
+  const [menuOpen, setMenuOpen] = useState(false); // hamburger menu
+  const menuOpener = useRef(null); // whichever hamburger opened it, so focus can go back there on close
+
+  function openMenu(e) {
+    // drop focus from a search field first so the on-screen keyboard closes. needed explicitly: ios safari
+    // doesn't move focus to a tapped button, and the desktop one is inside the panel, which keeps focus on purpose
+    document.activeElement?.blur();
+    menuOpener.current = e.currentTarget;
+    setMenuOpen(true);
+  }
+
+  // stable (useCallback) so the menu's escape-key listener isn't re-added on every render
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    menuOpener.current?.focus({ preventScroll: true }); // keyboard users land back where they were
+  }, []);
 
   // an armed cancel button goes back to the X after 5s, or as soon as you tap anywhere else
   useEffect(() => {
@@ -537,17 +555,15 @@ function App() {
         />
       </div>
 
-      {/* desktop: attribution in the map's bottom-right corner. on mobile it rides on top of the sheet instead (below) */}
-      <div
-        className={styles.mapAttribution}
-        dangerouslySetInnerHTML={{ __html: ATTRIBUTION }}
-      />
+      {/* map attribution, top-right corner of the map on both mobile and desktop: always visible, never under the sheet or dropdown */}
+      <div className={styles.mapAttribution}>{ATTRIBUTION}</div>
 
-      {/* mobile: floating menu button over the map. the menu itself comes later, so this does nothing yet */}
+      {/* mobile: floating menu button over the map */}
       <button
         type="button"
         className={styles.floatingMenuButton}
         aria-label="Menu"
+        onClick={openMenu}
       >
         <MenuIcon />
       </button>
@@ -556,10 +572,6 @@ function App() {
       <div
         className={`${styles.collapsedBar} ${panelExpanded ? "" : styles.collapsedBarShown}`}
       >
-        <div
-          className={styles.sheetAttribution}
-          dangerouslySetInnerHTML={{ __html: ATTRIBUTION }}
-        />
         <button
           type="button"
           className={styles.summaryButton}
@@ -591,17 +603,13 @@ function App() {
           if (e.target.closest("button")) e.preventDefault();
         }}
       >
-        <div
-          className={styles.sheetAttribution}
-          dangerouslySetInnerHTML={{ __html: ATTRIBUTION }}
-        />
-
         <div className={styles.panelHeader}>
           {/* desktop only: menu button + wordmark at the top of the pane */}
           <button
             type="button"
             className={styles.paneMenuButton}
             aria-label="Menu"
+            onClick={openMenu}
           >
             <MenuIcon />
           </button>
@@ -719,17 +727,19 @@ function App() {
               />
             </>
           )}
-
-          {/* both of these move into the hamburger menu later, they just live here for now */}
-          <button onClick={() => setDarkMode(!darkMode)}>
-            {darkMode ? "Toggle Light Mode" : "Toggle Dark Mode"}
-          </button>
-          <p>
-            Loaded {stops.length} stops, {routes.length} routes, {buses.length}{" "}
-            buses
-          </p>
         </div>
       </aside>
+
+      {/* slides in from the left over everything (theme, feedback, credits, stats). always mounted so it can animate */}
+      <Menu
+        open={menuOpen}
+        onClose={closeMenu}
+        darkMode={darkMode}
+        onThemeChange={setDarkMode}
+        stopCount={stops.length}
+        routeCount={routes.length}
+        busCount={buses.length}
+      />
 
       {/* over everything until stops + routes are in; stays up as "load failed" if they never arrive */}
       {(loading || loadError) && <Splash error={loadError} />}

@@ -12,9 +12,13 @@
   z-index: 0;
 }
 
-/* shared look for the attribution pill. the LocationIQ link has to stay visible at all times (free plan requirement) */
-.sheetAttribution,
+/* OSM + CARTO credit (legally required, so always visible). top-right of the map on both mobile and desktop:
+   the sheet, dropdown and menu button never reach up there. (LocationIQ's credit is in the hamburger menu) */
 .mapAttribution {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 16px); /* level with the floating menu button */
+  right: 12px;
+  z-index: 5; /* over the map, under the sheet/pane and menu */
   font-size: 9px;
   letter-spacing: 0.01em;
   line-height: normal;
@@ -23,24 +27,7 @@
   background: var(--attribution-bg);
   padding: 3px 7px;
   border-radius: 5px;
-}
-
-.sheetAttribution a,
-.mapAttribution a {
-  color: inherit;
-  text-decoration: underline;
-}
-
-/* mobile: sits just above the sheet's top-right corner and moves with it, so it can never cover the dropdown */
-.sheetAttribution {
-  position: absolute;
-  right: 12px;
-  top: -22px;
-}
-
-/* desktop only */
-.mapAttribution {
-  display: none;
+  pointer-events: none; /* plain text, so taps go through to the map */
 }
 
 /* ---------- hamburger ---------- */
@@ -363,16 +350,12 @@
   }
 
   .mapAttribution {
-    display: block;
-    position: fixed;
+    top: 14px;
     right: 14px;
-    bottom: 12px;
-    z-index: 1;
     font-size: 10px;
     padding: 4px 8px;
   }
 
-  .sheetAttribution,
   .floatingMenuButton,
   .collapsedBar,
   .hideButton {

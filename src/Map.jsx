@@ -53,9 +53,10 @@ function pairUp(flat)
   return pairs
 }
 
-// legal requirement. the LocationIQ part is only for their free plan, I can drop it once we upgrade
-// leaflet's own attribution control is off (the bottom sheet would cover it), so App renders this itself where it's always visible
-export const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO | <a href="https://www.locationiq.com" target="_blank" rel="noopener noreferrer">LocationIQ.com</a>'
+// legal requirement for the map data + tiles. leaflet's own attribution control is off (the bottom sheet would cover it),
+// so App renders this itself in the map's top-right corner, where it's always visible.
+// the LocationIQ credit (search results) lives in the hamburger menu instead, which their TOS allows
+export const ATTRIBUTION = '© OpenStreetMap contributors © CARTO'
 
 // tripResult can be:
     // null = nothing searched yet
