@@ -4,6 +4,7 @@ import Autocomplete from "./Autocomplete";
 import Map, { ATTRIBUTION } from "./Map";
 import styles from "./App.module.css";
 import card from "./ResultsCard.module.css";
+import { routeColor } from "./routeColor";
 
 function MenuIcon() {
   // the three hamburger bars, used by both the floating (mobile) and in-pane (desktop) menu buttons
@@ -29,6 +30,7 @@ function ResultsCard({
   onAlight,
   onDone,
   stopsRemaining,
+  legColor,
 }) {
   if (view === "noRoute") {
     return (
@@ -58,10 +60,10 @@ function ResultsCard({
   const routeDot = (
     <span
       className={card.dot}
-      style={{ background: `#${leg.route.color}` }}
+      style={{ background: legColor }}
       aria-hidden="true"
     />
-  ); // TODO: lighten for dark theme (map step)
+  );
   const closeEnough = stopsRemaining !== null && stopsRemaining <= 4; // TODO: potentially change 4 to realistic number after beta testing
 
   if (view === "riding") {
@@ -467,6 +469,7 @@ function App() {
   const inBusTrip =
     tripView !== null && tripView !== "noRoute" && tripView !== "walk";
   const isTransfer = inBusTrip && !boardedBusId && currentLeg > 0; // off one bus, waiting for the next at the same stop
+  const legColor = leg ? routeColor(leg.route.color, darkMode) : null; // same color the map uses for this route
 
   // the one-liner on the collapsed mobile bar
   function collapsedSummary() {
@@ -492,7 +495,7 @@ function App() {
           <>
             {isTransfer ? "Transfer: board" : "Board"}{" "}
             {/* route name in its own color, like the dot */}
-            <span style={{ color: `#${leg.route.color}` }}>{leg.route.name}</span>
+            <span style={{ color: legColor }}>{leg.route.name}</span>
             {tripView !== "skeleton" && ` in ${eta} min`}
           </>
         );
@@ -506,7 +509,6 @@ function App() {
       {/* the map sits behind everything and its box never changes size, the sheet just slides over it */}
       <div className={styles.mapArea}>
         <Map
-          stops={stops}
           tripResult={tripResult}
           routes={routes}
           darkMode={darkMode}
@@ -692,6 +694,7 @@ function App() {
                 onAlight={handleAlight} // we call handleAlight when we trigger onAlight
                 onDone={resetTrip} // final leg: trip's over, back to search
                 stopsRemaining={stopsRemaining}
+                legColor={legColor} // route color, lightened in dark theme
               />
             </>
           )}
