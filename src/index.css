@@ -54,6 +54,11 @@
   --shadow-popup: 0 6px 18px rgba(8, 20, 35, 0.22);
   --shadow-menu: 14px 0 40px rgba(8, 20, 35, 0.28);
   --backdrop: rgba(8, 20, 35, 0.42);
+  --shadow-sheet: 0 -10px 34px rgba(8, 20, 35, 0.14);
+  --shadow-pane: 8px 0 30px rgba(8, 20, 35, 0.1);
+  --shadow-menu-button: 0 4px 14px rgba(8, 20, 35, 0.18);
+  --menu-button-bg: #ffffff;
+  --attribution-bg: rgba(255, 255, 255, 0.78);
 }
 
 :root[data-theme='dark'] {
@@ -84,6 +89,18 @@
   --shadow-popup: 0 6px 18px rgba(0, 0, 0, 0.5);
   --shadow-menu: 14px 0 40px rgba(0, 0, 0, 0.55);
   --backdrop: rgba(4, 6, 9, 0.58);
+  --shadow-sheet: 0 -10px 34px rgba(0, 0, 0, 0.5);
+  --shadow-pane: 8px 0 30px rgba(0, 0, 0, 0.4); /* no dark desktop in the design, so this is my guess */
+  --shadow-menu-button: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --menu-button-bg: #1e232a;
+  --attribution-bg: rgba(10, 12, 16, 0.7);
+}
+
+/* the page itself never scrolls; the map fills the screen and only the panel scrolls inside itself */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {

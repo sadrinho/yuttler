@@ -39,6 +39,10 @@ const boardAlightIcon = makeIcon('red')
 const startStopIcon = makeIcon('blue')
 const destinationIcon = makeIcon('orange')
 
+// legal requirement. the LocationIQ part is only for their free plan, I can drop it once we upgrade
+// leaflet's own attribution control is off (the bottom sheet would cover it), so App renders this itself where it's always visible
+export const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO | <a href="https://www.locationiq.com" target="_blank" rel="noopener noreferrer">LocationIQ.com</a>'
+
 // stops = list of stops
 // tripResult can be:
     // null = nothing searched yet
@@ -68,7 +72,8 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
   }
 
   return ( //anytime we want to do anything within the map instance, we have to perform that within <MapContainer>, since it uses React Context to give its children access to the map instance
-    <MapContainer center={[41.3116, -72.9271]} zoom={15} style={{ height: '500px', width: '100%' }}> 
+    // fills its wrapper in App, which never changes size. no +/- buttons (pinch/scroll/double-tap still zoom) and no built-in attribution (see ATTRIBUTION)
+    <MapContainer center={[41.3116, -72.9271]} zoom={15} zoomControl={false} attributionControl={false} style={{ height: '100%', width: '100%' }}>
 
       {/* creates the map tiles */}
       <TileLayer 
@@ -77,7 +82,7 @@ function Map( { stops, tripResult, routes, darkMode, buses }) {
           ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${import.meta.env.VITE_CARTO_API_KEY}` // map imagery source; CARTO's positron
           // ? "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png" // possible 2nd choice in case Carto's is too dark. requires API key though
           : `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${import.meta.env.VITE_CARTO_API_KEY}` }
-        attribution='&copy; OpenStreetMap contributors &copy; CARTO | <a href="https://www.locationiq.com" target="_blank" rel="noopener noreferrer">LocationIQ.com</a>' // legal requirement. the LocationIQ part is only for their free plan, I can drop it once we upgrade
+        attribution={ATTRIBUTION} // kept on the layer too, so it's still correct if leaflet's control ever comes back
       />
 
         {routesToDraw.map(route => ( // 

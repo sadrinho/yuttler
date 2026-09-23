@@ -1,7 +1,18 @@
 import { useState, useEffect } from "react";
 import { planTrip } from "./tripPlanner";
 import Autocomplete from "./Autocomplete";
-import Map from "./Map";
+import Map, { ATTRIBUTION } from "./Map";
+import styles from "./App.module.css";
+
+function MenuIcon() { // the three hamburger bars, used by both the floating (mobile) and in-pane (desktop) menu buttons
+  return (
+    <span className={styles.menuBars} aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
 
 function ResultsCard({ result, leg, currentLeg, totalLegs, relevantEtas, trackedBus, onBoard, onAlight, boarded, stopsRemaining, etaFailed }) {
   if (!result) return <p>Enter a start and end location above</p>;
@@ -122,6 +133,8 @@ function App() {
   const [boardedBusId, setBoardedBusId] = useState(null); // remains null until we board a bus
 
   // index.html already picked the theme from localStorage before react loaded, so just read it back
+  const [panelExpanded, setPanelExpanded] = useState(true); // mobile only: bottom sheet open vs collapsed to its one-line bar. desktop ignores it
+
   const [darkMode, setDarkMode] = useState(() => document.documentElement.dataset.theme === 'dark');
 
   // whenever the theme changes, apply it to <html> (the css tokens key off data-theme) and remember it
@@ -275,25 +288,12 @@ function App() {
     : (targetIndex - busIndex + routeLen) % routeLen
   }
 
+  // mobile vs desktop is decided purely in App.module.css (one breakpoint at 1024px), so everything below renders on both
+  // and css hides whatever doesn't belong. no js width checks = nothing jumps on load
   return (
-    <div>
-      <h1>Yale Shuttle</h1>
-      <p>
-        Loaded {stops.length} stops, {routes.length} routes, {buses.length}{" "}
-        buses
-      </p>
-      <div>
-        <Autocomplete
-          placeholder="Where are you starting from?"
-          onSelect={(suggestion) => setStartCoords (suggestion)}
-        /> 
-        <Autocomplete
-          placeholder="Where are you going?"
-          onSelect={(suggestion) => setEndCoords(suggestion)}
-        />
-
-        <button onClick={handleSearch}>Find Route</button>
-
+    <>
+      {/* the map sits behind everything and its box never changes size, the sheet just slides over it */}
+      <div className={styles.mapArea}>
         <Map
           stops={stops}
           tripResult={tripResult}
@@ -301,13 +301,59 @@ function App() {
           darkMode={darkMode}
           buses={buses}
         />
+      </div>
 
-        <button onClick={() => setDarkMode(!darkMode)}>
-          {darkMode ? "Toggle Light Mode" : "Toggle Dark Mode"}
+      {/* desktop: attribution in the map's bottom-right corner. on mobile it rides on top of the sheet instead (below) */}
+      <div className={styles.mapAttribution} dangerouslySetInnerHTML={{ __html: ATTRIBUTION }} />
+
+      {/* mobile: floating menu button over the map. the menu itself comes later, so this does nothing yet */}
+      <button type="button" className={styles.floatingMenuButton} aria-label="Menu">
+        <MenuIcon />
+      </button>
+
+      {/* mobile: the one-line bar you see when the sheet is hidden. the whole bar is the tap target */}
+      <div className={`${styles.collapsedBar} ${panelExpanded ? '' : styles.collapsedBarShown}`}>
+        <div className={styles.sheetAttribution} dangerouslySetInnerHTML={{ __html: ATTRIBUTION }} />
+        <button type="button" className={styles.summaryButton} aria-expanded={false} onClick={() => setPanelExpanded(true)}>
+          <span className={styles.summary}>Where to?</span> {/* TODO: per-state summaries */}
+          <span className={styles.chevron} aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17">
+              <polyline points="5,15 12,8 19,15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
         </button>
       </div>
 
-      <ResultsCard 
+      {/* the panel: bottom sheet on mobile, fixed 400px left pane on desktop */}
+      <aside className={`${styles.panel} ${panelExpanded ? '' : styles.panelCollapsed}`}>
+        <div className={styles.sheetAttribution} dangerouslySetInnerHTML={{ __html: ATTRIBUTION }} />
+
+        <div className={styles.panelHeader}>
+          {/* desktop only: menu button + wordmark at the top of the pane */}
+          <button type="button" className={styles.paneMenuButton} aria-label="Menu">
+            <MenuIcon />
+          </button>
+          <div className={styles.wordmark}>Yuttler</div>
+
+          {/* mobile only: slides the sheet down to the collapsed bar */}
+          <button type="button" className={styles.hideButton} aria-expanded={true} onClick={() => setPanelExpanded(false)}>
+            Hide
+          </button>
+        </div>
+
+        <div className={styles.panelBody}>
+        <Autocomplete
+          placeholder="Where are you starting from?"
+          onSelect={(suggestion) => setStartCoords (suggestion)}
+        />
+        <Autocomplete
+          placeholder="Where are you going?"
+          onSelect={(suggestion) => setEndCoords(suggestion)}
+        />
+
+        <button onClick={handleSearch}>Find Route</button>
+
+      <ResultsCard
         result={tripResult} // really only useful for checking if walk-only or if null bc guard rn checks if tripresult is null, not leg (but if tripresult is null that should imply the latter is null too)
         leg={leg} // our leg object
         currentLeg={currentLeg} // our leg index
@@ -320,7 +366,18 @@ function App() {
         stopsRemaining= {stopsRemaining}
         etaFailed={etaFailed} // true if the last eta fetch failed
       />
-    </div>
+
+        {/* both of these move into the hamburger menu later, they just live here for now */}
+        <button onClick={() => setDarkMode(!darkMode)}>
+          {darkMode ? "Toggle Light Mode" : "Toggle Dark Mode"}
+        </button>
+        <p>
+          Loaded {stops.length} stops, {routes.length} routes, {buses.length}{" "}
+          buses
+        </p>
+        </div>
+      </aside>
+    </>
   );
 }
 

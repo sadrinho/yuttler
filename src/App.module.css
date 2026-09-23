@@ -1,0 +1,284 @@
+/* layout shell: fullscreen map, mobile bottom sheet / desktop left pane, hamburger button.
+   mobile first; everything desktop lives in the one media query at the bottom (1024px, per the design) */
+
+/* ---------- map ---------- */
+
+/* fixed box that never changes size when the sheet moves, so leaflet never has to redraw tiles.
+   isolation keeps leaflet's own z-indexes (up to 1000) inside the map, so our overlays sit on top without a z-index war */
+.mapArea {
+  position: fixed;
+  inset: 0;
+  isolation: isolate;
+  z-index: 0;
+}
+
+/* shared look for the attribution pill. the LocationIQ link has to stay visible at all times (free plan requirement) */
+.sheetAttribution,
+.mapAttribution {
+  font-size: 9px;
+  letter-spacing: 0.01em;
+  line-height: normal;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: var(--attribution-bg);
+  padding: 3px 7px;
+  border-radius: 5px;
+}
+
+.sheetAttribution a,
+.mapAttribution a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* mobile: sits just above the sheet's top-right corner and moves with it, so it can never cover the dropdown */
+.sheetAttribution {
+  position: absolute;
+  right: 12px;
+  top: -22px;
+}
+
+/* desktop only */
+.mapAttribution {
+  display: none;
+}
+
+/* ---------- hamburger ---------- */
+
+.menuBars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menuBars span {
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+
+/* mobile: floating circle over the map */
+.floatingMenuButton {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  left: 16px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--menu-button-bg);
+  box-shadow: var(--shadow-menu-button);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* desktop: rounded square in the pane header */
+.paneMenuButton {
+  display: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--field);
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  cursor: pointer;
+}
+
+.wordmark {
+  display: none;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--accent-text);
+}
+
+/* ---------- mobile bottom sheet ---------- */
+
+/* the collapsed one-line bar. it always sits at the bottom, underneath the expanded sheet,
+   so hiding the sheet just slides it down to reveal this (one sheet sliding, not a swap) */
+.collapsedBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  background: var(--surface);
+  border-radius: 28px 28px 0 0;
+  box-shadow: var(--shadow-sheet);
+  visibility: hidden; /* also takes it out of the tab order while the sheet is open */
+}
+
+.collapsedBarShown {
+  visibility: visible;
+}
+
+.summaryButton {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 18px 20px max(34px, env(safe-area-inset-bottom, 0px));
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+/* long summaries truncate instead of wrapping, so the bar is the same height in every state */
+.summary {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.chevron {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--field);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+/* the expanded sheet: as tall as its content, anchored to the bottom, above the collapsed bar */
+.panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  /* never taller than the space under the floating menu button (16px gap below it) */
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 76px);
+  background: var(--surface);
+  border-radius: 28px 28px 0 0;
+  box-shadow: var(--shadow-sheet);
+  padding: 14px 20px max(34px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* typing in a field: grow to full height (up to 16px under the menu button) so the dropdown clears the keyboard. css only, per the design */
+.panel:focus-within {
+  top: calc(env(safe-area-inset-top, 0px) + 76px);
+}
+
+.panelCollapsed {
+  transform: translateY(100%);
+  visibility: hidden; /* hides its shadow + attribution too, and keeps its fields out of the tab order */
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+  flex: none;
+}
+
+.hideButton {
+  margin-left: auto;
+  height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--field);
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* only this part scrolls, so the header and the attribution (which sits outside the box) aren't clipped */
+.panelBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.floatingMenuButton:focus-visible,
+.paneMenuButton:focus-visible,
+.summaryButton:focus-visible,
+.hideButton:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+/* ---------- desktop ---------- */
+
+@media (min-width: 1024px) {
+  .mapArea {
+    left: 400px;
+  }
+
+  .mapAttribution {
+    display: block;
+    position: fixed;
+    right: 14px;
+    bottom: 12px;
+    z-index: 1;
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  .sheetAttribution,
+  .floatingMenuButton,
+  .collapsedBar,
+  .hideButton {
+    display: none;
+  }
+
+  .paneMenuButton {
+    display: flex;
+  }
+
+  .wordmark {
+    display: block;
+  }
+
+  /* fixed 400px left pane. it never collapses, so undo the sheet's collapsed + focus styles */
+  .panel,
+  .panel:focus-within,
+  .panelCollapsed {
+    top: 0;
+    right: auto;
+    width: 400px;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: var(--shadow-pane);
+    padding: 26px 24px 28px;
+    gap: 18px;
+    transform: none;
+    visibility: visible;
+  }
+
+  .panelBody {
+    gap: 18px;
+  }
+}
