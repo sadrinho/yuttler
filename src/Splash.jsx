@@ -11,8 +11,8 @@ function Splash({ error }) {
   return (
     <div className={styles.splash} role="alert">
       <div className={styles.brand}>
-        <div className={styles.iconSlot} aria-hidden="true" />{" "}
-        {/* reserved for the real logo */}
+        {/* the logo's blue background matches the screen behind it, so just the white mark shows */}
+        <img className={styles.logo} src="/icon-192.png" alt="" />
         <div className={styles.wordmark}>yuttler.</div>
       </div>
 

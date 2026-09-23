@@ -32,13 +32,14 @@
   gap: 14px;
 }
 
-.iconSlot {
-  width: 40px;
-  height: 40px;
+/* like the menu: the mark only fills ~70% of the icon (the rest is invisible blue), so draw it bigger and pull it back
+   in with negative margins so the visible mark matches the wordmark without moving anything */
+.logo {
+  display: block;
+  width: 62px;
+  height: 62px;
+  margin: -11px;
   flex: none;
-  box-sizing: border-box;
-  border-radius: 12px;
-  border: 2px dashed rgba(255, 255, 255, 0.4);
 }
 
 .wordmark {
@@ -131,10 +132,10 @@
     gap: 20px;
   }
 
-  .iconSlot {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
+  .logo {
+    width: 88px;
+    height: 88px;
+    margin: -16px;
   }
 
   .wordmark {

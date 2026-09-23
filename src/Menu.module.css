@@ -60,13 +60,14 @@
   gap: 12px;
 }
 
-.iconSlot {
-  width: 34px;
-  height: 34px;
+/* the mark only fills ~70% of the icon (the rest is blue, invisible on the blue band), so draw it bigger and pull it back
+   in with negative margins: the visible mark matches the wordmark's height, and the header keeps its 34px layout */
+.logo {
+  display: block;
+  width: 46px;
+  height: 46px;
+  margin: -6px;
   flex: none;
-  box-sizing: border-box;
-  border-radius: 10px;
-  border: 2px dashed rgba(255, 255, 255, 0.4);
 }
 
 .wordmark {
