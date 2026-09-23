@@ -111,6 +111,17 @@
   transition: visibility 0s linear 260ms;
 }
 
+/* the bar's summary + chevron fade in just after the swap (the sheet's contents faded out on the way down),
+   so the header -> summary change is a quick cross-fade instead of a jump. hiding the bar stays instant */
+.collapsedBar .summaryButton {
+  opacity: 0;
+}
+
+.collapsedBarShown .summaryButton {
+  opacity: 1;
+  transition: opacity 160ms ease 260ms;
+}
+
 .summaryButton {
   width: 100%;
   box-sizing: border-box;
@@ -192,6 +203,17 @@
   transition:
     transform 260ms var(--ease-slide),
     visibility 0s linear 260ms;
+}
+
+/* the sheet's contents fade in as it slides up, and fade out as it slides down (it lands as a blank strip,
+   then the bar's summary fades in). opacity only, so it stays smooth */
+.panel > * {
+  transition: opacity 200ms ease;
+}
+
+.panelCollapsed > * {
+  opacity: 0;
+  transition: opacity 160ms ease;
 }
 
 .panelHeader {
@@ -424,6 +446,11 @@
     transform: none;
     visibility: visible;
     transition: none; /* the pane never slides */
+  }
+
+  /* and never fades (in case the sheet was hidden on a narrow window before it got wider) */
+  .panelCollapsed > * {
+    opacity: 1;
   }
 
   .panelBody {
