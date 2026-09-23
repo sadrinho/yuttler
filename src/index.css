@@ -61,6 +61,8 @@
   --attribution-bg: rgba(255, 255, 255, 0.78);
   --focus-border: #00356b; /* focused search field */
   --focus-ring: rgba(0, 53, 107, 0.09);
+  --banner-bg: #eaf0f7; /* transfer banner */
+  --banner-text: #00356b;
 }
 
 :root[data-theme='dark'] {
@@ -98,6 +100,8 @@
   --attribution-bg: rgba(10, 12, 16, 0.7);
   --focus-border: #8fb8e4; /* no dark focused field in the design, and yale blue disappears on dark */
   --focus-ring: rgba(143, 184, 228, 0.15);
+  --banner-bg: #22272e;
+  --banner-text: #8fb8e4;
 }
 
 /* the page itself never scrolls; the map fills the screen and only the panel scrolls inside itself */

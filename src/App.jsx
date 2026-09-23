@@ -3,6 +3,7 @@ import { planTrip } from "./tripPlanner";
 import Autocomplete from "./Autocomplete";
 import Map, { ATTRIBUTION } from "./Map";
 import styles from "./App.module.css";
+import card from "./ResultsCard.module.css";
 
 function MenuIcon() { // the three hamburger bars, used by both the floating (mobile) and in-pane (desktop) menu buttons
   return (
@@ -14,97 +15,133 @@ function MenuIcon() { // the three hamburger bars, used by both the floating (mo
   );
 }
 
-function ResultsCard({ result, leg, currentLeg, totalLegs, relevantEtas, trackedBus, onBoard, onAlight, boarded, stopsRemaining, etaFailed }) {
-  if (!result) return <p>Enter a start and end location above</p>;
-  if (!result.success) return <p>{result.message}</p>;
-  if (result.walkOnly) {
+// everything below the divider in a trip state. App works out which view we're in (tripView) from the existing
+// state, this just draws it. stays one component with stable elements so 10s/30s updates don't remount anything
+function ResultsCard({ result, view, leg, isTransfer, isFinalLeg, relevantEtas, onBoard, onAlight, onDone, stopsRemaining }) {
+  if (view === 'noRoute') {
+    return <div className={card.title}>No route found between these locations.</div>;
+  }
+
+  if (view === 'walk') {
+    // planTrip gives meters; 80 m/min is about 3 mph
+    const ft = Math.round(result.distance * 3.281 / 10) * 10;
+    const min = Math.max(1, Math.round(result.distance / 80));
     return (
-      <div>
-        <p>
-          {" "}
-          No transit needed. Walk{" "}
-          <strong>~{Math.round(result.distance)} meters</strong> to your
-          destination.
-        </p>
+      <div className={card.block}>
+        <div className={card.title}>No bus needed.</div>
+        <div className={card.subtitle}>
+          Walk <span className={card.accentStrong}>~{ft} ft (~{min} min)</span> to your destination.
+        </div>
       </div>
     );
   }
 
   // up until this point, we were operating on the result as a whole; below this point, we operate on each leg
-  
+  const routeDot = <span className={card.dot} style={{ background: `#${leg.route.color}` }} aria-hidden="true" />; // TODO: lighten for dark theme (map step)
+  const closeEnough = stopsRemaining !== null && stopsRemaining <= 4; // TODO: potentially change 4 to realistic number after beta testing
+
+  if (view === 'riding') {
+    return (
+      <>
+        <div className={card.block}>
+          <div className={`${card.routeLine} ${card.routeLineSmall}`}>
+            {routeDot}
+            <span className={card.subtitle}>Riding the {leg.route.name}</span>
+          </div>
+          <div className={card.title}>
+            Get off at <span className={card.accent}>{leg.alightStop.name}</span>
+          </div>
+        </div>
+
+        <div className={card.hero}>
+          {stopsRemaining === null ? ( // no bus position yet: same-size placeholder so nothing jumps when it arrives
+            <span className={card.skelHero} />
+          ) : (
+            <>
+              <span className={card.heroValue}>{stopsRemaining}</span>
+              <span className={card.heroUnit}>{stopsRemaining === 1 ? "stop left" : "stops left"}</span>
+            </>
+          )}
+        </div>
+
+        <div className={card.actions}>
+          {isFinalLeg ? (
+            <button className={styles.primaryButton} onClick={onDone}>Done</button>
+          ) : (
+            // always rendered (disabled until the bus is close) so its space is reserved and nothing jumps
+            <button className={styles.primaryButton} disabled={!closeEnough} onClick={onAlight}>I'm off</button> // manually triggers logic dictating leg switch
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // waiting, skeleton, no buses, eta unavailable (and transfer, which is just waiting for the next leg)
+  const loading = view === 'skeleton';
+  const next = relevantEtas[0];
+  const later = [relevantEtas[1], relevantEtas[2]]; // always 2 slots so the row height never changes
+
   return (
-    <div>
+    <>
+      <div className={card.block}>
+        {!isTransfer && ( // on a transfer you're already at the stop, the banner says so
+          <div className={card.subtitle}>
+            Walk to <span className={card.accentStrong}>{leg.boardStop.name}</span>
+          </div>
+        )}
+        <div className={card.routeLine}>
+          {routeDot}
+          <span className={card.title}>Board the {leg.route.name}</span>
+        </div>
+      </div>
 
-      {boarded? // user's boarded a bus?
-      (
-        <>
-          <p> 
-            Currently riding the <strong>{leg.route.name}</strong>. {/* TODO: verify transfer logic */}
-          </p>
-          <p>
-          Get off at <strong>{leg.alightStop.name}</strong>.
-          </p>
-          <p>
-            {stopsRemaining} stops remaining.
-          </p>
-          <p> {/* if the user is within a reasonable distance of their alight stop, and they are not on the last leg, we display this button */}
-            {stopsRemaining !== null && stopsRemaining <= 4 && currentLeg !== (totalLegs - 1)  && (
-              <button onClick={onAlight}>I'm off</button> // manually triggers logic dictating leg switch
-            )}
-          </p>
-        </>
-      )
-
-      // user is not on board, and we couldn't load etas; show ... instead of wrongly saying no buses are coming
-      : etaFailed ? (
-        <>
-          <p>
-            Walk to <strong>{leg.boardStop.name}</strong>
-          </p>
-          <p>
-            Board the <strong>{leg.route.name}</strong>
-          </p>
-          <p>
-            Bus arriving in <strong>...</strong>
-          </p>
-        </>
-      )
-
-      // user is not on board, and NO buses (relevantEtas) are incoming for boardStop
-      : relevantEtas.length === 0 ? ( 
-        <p>
-          {" "}
-          No buses currently inbound for{" "}
-          <strong>{leg.boardStop.name}.</strong>{" "}
-        </p> // TODO: later, suggest alternative stops or pull nearby stops
-      ) 
-      
-      : // user is not on board, but buses ARE incoming for boardStop 
-      (
-        <>
-          <p>
-            Walk to <strong>{leg.boardStop.name}</strong>
-          </p>
-          <p>
-            Board the <strong>{leg.route.name}</strong>
-          </p>
-          <p>{stopsRemaining} stops until you board bus <strong>{trackedBus?.name}</strong></p>
-        
-        {relevantEtas.map((eta) => ( // TODO: perhaps this is inappropriate for a presentational component?
-          <p key={eta.bus_id}>
-            Bus <strong>{eta.bus_name}</strong> in <strong>{eta.avg}</strong>{" "}
-            min.
-          </p>
-        ))}
-
-        {stopsRemaining !== null && stopsRemaining <=4 && // TODO: potentially change 4 to realistic number after beta testing
-        (
-          <button onClick={onBoard}>I'm on board</button>
-        )
-        }
-        </>
+      {view === 'noBuses' || view === 'etaUnavailable' ? (
+        <p className={card.message}>
+          {view === 'noBuses'
+            ? `No buses heading to ${leg.boardStop.name} right now.` // TODO: later, suggest alternative stops or pull nearby stops
+            : "Can't load arrival times right now." // don't wrongly say no buses are coming; the next 30s poll retries
+          }
+        </p>
+      ) : (
+        <div className={card.etaRow}>
+          <div className={card.heroCol}>
+            <div className={card.hero}>
+              {loading ? <span className={card.skelHero} /> : (
+                <>
+                  <span className={card.heroValue}>{next.avg}</span>
+                  <span className={card.heroUnit}>min</span>
+                </>
+              )}
+            </div>
+            <div className={card.meta}>
+              {loading ? <span className={card.skelLine} style={{ width: 132 }} /> : (
+                <>Bus {next.bus_name}{stopsRemaining !== null && ` · ${stopsRemaining} ${stopsRemaining === 1 ? "stop" : "stops"} away`}</>
+              )}
+            </div>
+          </div>
+          <div className={card.later}>
+            {later.map((eta, i) => (
+              <div key={i} className={card.laterSlot}> {/* keyed by slot, not bus, so rows update in place */}
+                {i === 1 && <div className={card.divider} style={{ visibility: (loading || eta) ? 'visible' : 'hidden' }} />}
+                <div className={card.meta}>
+                  {loading ? <span className={card.skelLine} style={{ width: 118 }} />
+                    : eta ? `Bus ${eta.bus_name} · ${eta.avg} min` : " "}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
-    </div>
+
+      <div className={card.actions}>
+        {/* never hidden, just disabled until the bus is 4 or fewer stops away */}
+        <button className={styles.primaryButton} disabled={loading || !closeEnough} onClick={onBoard}>I'm on board</button>
+        {/* kept in place (just invisible) once the button enables, so nothing moves */}
+        <p className={card.helper} style={{ visibility: (!loading && closeEnough) ? 'hidden' : 'visible' }}>
+          Available when your bus is close
+        </p>
+      </div>
+    </>
   );
 }
 
@@ -125,6 +162,7 @@ function App() {
   const [buses, setBuses] = useState([]);
   const [boardEtas, setBoardEtas] = useState([]);
   const [etaFailed, setEtaFailed] = useState(false); // true when the last eta fetch failed, so ResultsCard shows ... instead of "no buses"
+  const [etasFor, setEtasFor] = useState(null); // { trip, stopId } the current boardEtas came from, so we know when they're for the stop we're showing (skeleton until then)
   const [currentLeg, setCurrentLeg] = useState(0); // used to determine what leg of a trip a user is on (i.e. for direct trips, remains at 0)
 
   const [tripResult, setTripResult] = useState(null);
@@ -225,11 +263,13 @@ function App() {
         .then((data) => {
           setEtaFailed(Boolean(data?.error)); // proxy sends { error } when downtowner is down
           setBoardEtas(data?.etas?.[stopId]?.etas || []); // note: 1) unsorted 2) returns etas for ALL routes containing boardStop
+          setEtasFor({ trip: tripResult, stopId }); // first answer for this trip + stop is in, so the skeleton can go
         })
         .catch((err) => { // network failure or non-JSON body
           console.error("Failed to load ETAs:", err);
           setEtaFailed(true);
           setBoardEtas([]); // clear rather than show stale arrival times
+          setEtasFor({ trip: tripResult, stopId }); // a failure is still an answer: show "can't load arrival times" instead of the skeleton
         });
       // )
     }
@@ -270,6 +310,19 @@ function App() {
     setTripResult(result);
   }
 
+  // done (final leg) and cancel both end the trip. the fields keep what you typed since the Autocompletes never unmount
+  function resetTrip() {
+    setTripResult(null)
+    setCurrentLeg(0)
+    setBoardedBusId(null)
+  }
+
+  function handleCancel() {
+    const inBusTrip = tripResult?.success && !tripResult.walkOnly // walk only / no route have nothing to cancel, so no prompt
+    if (inBusTrip && !window.confirm("Cancel this trip?")) return
+    resetTrip()
+  }
+
   function handleAlight() { // called when a user gets off their current bus to alight stops
     setBoardedBusId(null)
     setCurrentLeg(currentLeg + 1)
@@ -293,6 +346,42 @@ function App() {
   const inSearchState = !tripResult || isValidationMessage
   // only warn while a field is actually still missing, so picking the missing place clears the warning straight away
   const showValidation = isValidationMessage && (!startCoords || !endCoords)
+
+  // which stop the eta effect is polling right now, and whether its first answer (for this trip) is in yet
+  const etaStopId = leg ? (boardedBusId ? leg.alightStop.id : leg.boardStop.id) : null
+  const etasLoaded = etasFor?.trip === tripResult && etasFor?.stopId === etaStopId
+
+  // which trip view to draw. no new state machine, it's all worked out from what we already have (see the design readme's table)
+  let tripView = null // null = search state
+  if (!inSearchState) {
+    if (!tripResult.success) tripView = 'noRoute'
+    else if (tripResult.walkOnly) tripView = 'walk'
+    else if (boardedBusId) tripView = 'riding'
+    else if (!etasLoaded) tripView = 'skeleton'
+    else if (etaFailed) tripView = 'etaUnavailable'
+    else if (relevantEtas.length === 0) tripView = 'noBuses'
+    else tripView = 'waiting'
+  }
+  const totalLegs = tripResult?.legs?.length ?? 0 // incase somethings wrong w/ tr or legs, we pass 0
+  const inBusTrip = tripView !== null && tripView !== 'noRoute' && tripView !== 'walk'
+  const isTransfer = inBusTrip && !boardedBusId && currentLeg > 0 // off one bus, waiting for the next at the same stop
+
+  // the one-liner on the collapsed mobile bar
+  function collapsedSummary() {
+    const eta = relevantEtas[0]?.avg
+    switch (tripView) {
+      case null: return "Where to?"
+      case 'walk': return `Walk ~${Math.max(1, Math.round(tripResult.distance / 80))} min`
+      case 'noRoute': return "No route found"
+      case 'riding': return stopsRemaining === null
+        ? `Get off at ${leg.alightStop.name}`
+        : `${stopsRemaining} ${stopsRemaining === 1 ? "stop" : "stops"} to ${leg.alightStop.name}`
+      case 'noBuses': return `No buses heading to ${leg.boardStop.name}`
+      case 'etaUnavailable': return "Arrival times unavailable"
+      case 'skeleton': return `${isTransfer ? "Transfer: board" : "Board"} ${leg.route.name}` // eta not in yet
+      default: return `${isTransfer ? "Transfer: board" : "Board"} ${leg.route.name} in ${eta} min`
+    }
+  }
 
   // mobile vs desktop is decided purely in App.module.css (one breakpoint at 1024px), so everything below renders on both
   // and css hides whatever doesn't belong. no js width checks = nothing jumps on load
@@ -321,7 +410,7 @@ function App() {
       <div className={`${styles.collapsedBar} ${panelExpanded ? '' : styles.collapsedBarShown}`}>
         <div className={styles.sheetAttribution} dangerouslySetInnerHTML={{ __html: ATTRIBUTION }} />
         <button type="button" className={styles.summaryButton} aria-expanded={false} onClick={() => setPanelExpanded(true)}>
-          <span className={styles.summary}>Where to?</span> {/* TODO: per-state summaries */}
+          <span className={styles.summary}>{collapsedSummary()}</span>
           <span className={styles.chevron} aria-hidden="true">
             <svg viewBox="0 0 24 24" width="17" height="17">
               <polyline points="5,15 12,8 19,15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -346,6 +435,15 @@ function App() {
           </button>
           <div className={styles.wordmark}>Yuttler</div>
 
+          {/* cancel X: left on mobile, far right on desktop. shown in every result state; the only way out of a trip */}
+          {tripView !== null && (
+            <button type="button" className={`${styles.iconButton} ${styles.cancelButton}`} onClick={handleCancel} aria-label="Cancel trip">
+              <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+                <path d="M5 5 L19 19 M19 5 L5 19" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+              </svg>
+            </button>
+          )}
+
           {/* mobile only: slides the sheet down to the collapsed bar */}
           <button type="button" className={styles.hideButton} aria-expanded={true} onClick={() => setPanelExpanded(false)}>
             Hide
@@ -353,40 +451,55 @@ function App() {
         </div>
 
         <div className={styles.panelBody}>
-        <div className={styles.fields}>
+        {isTransfer && ( // calm, not alarming: tinted card, accent text, no icon
+          <p className={styles.transferBanner}>
+            Transfer: stay at <strong>{leg.boardStop.name}</strong> and board the <strong>{leg.route.name}</strong>
+          </p>
+        )}
+
+        <div className={`${styles.fields} ${tripView !== null ? styles.fieldsCompact : ''}`}>
+        {inBusTrip && totalLegs > 1 && (
+          <div className={styles.legLabel}>Leg {currentLeg + 1} of {totalLegs}</div>
+        )}
+        {/* same components in every state (so what you typed survives), just shrunk to fixed chips once there's a result */}
         <Autocomplete
           placeholder="Where are you starting from?"
           onSelect={(suggestion) => setStartCoords (suggestion)}
           invalid={showValidation && !startCoords}
+          compact={tripView !== null}
         />
         <Autocomplete
           placeholder="Where are you going?"
           onSelect={(suggestion) => setEndCoords(suggestion)}
           invalid={showValidation && !endCoords}
+          compact={tripView !== null}
         />
         </div>
 
-        <button className={styles.primaryButton} onClick={() => { document.activeElement?.blur(); handleSearch(); }}>Find route</button> {/* blur so the keyboard closes and the sheet settles once the search runs */}
-
-        {/* search state: the hint (or the warning, in the same one-line slot so nothing moves). any other state: the results */}
+        {/* search state: find route + the hint (or the warning, in the same one-line slot so nothing moves). any other state: the results */}
         {inSearchState ? (
-          <p className={`${styles.hint} ${showValidation ? styles.hintWarning : ''}`}>
-            {showValidation ? "Please select a start and end location" : "Enter a start and end location above"}
-          </p>
+          <>
+            <button className={styles.primaryButton} onClick={() => { document.activeElement?.blur(); handleSearch(); }}>Find route</button> {/* blur so the keyboard closes and the sheet settles once the search runs */}
+            <p className={`${styles.hint} ${showValidation ? styles.hintWarning : ''}`}>
+              {showValidation ? "Please select a start and end location" : "Enter a start and end location above"}
+            </p>
+          </>
         ) : (
+          <>
+            <div className={styles.divider} />
       <ResultsCard
-        result={tripResult} // really only useful for checking if walk-only or if null bc guard rn checks if tripresult is null, not leg (but if tripresult is null that should imply the latter is null too)
+        result={tripResult} // walk-only distance
+        view={tripView} // which state to draw, worked out above
         leg={leg} // our leg object
-        currentLeg={currentLeg} // our leg index
-        totalLegs={tripResult?.legs?.length ?? 0} // incase somethings wrong w/ tr or legs, we pass 0
-        relevantEtas={relevantEtas} 
-        trackedBus={trackedBus} 
+        isTransfer={isTransfer}
+        isFinalLeg={currentLeg === totalLegs - 1}
+        relevantEtas={relevantEtas}
         onBoard={() => setBoardedBusId(trackedBusId)} // resultsCard tells react to call this when we trigger onBoard
         onAlight={handleAlight} // we call handleAlight when we trigger onAlight
-        boarded={boardedBusId !== null} // true if boarded, false otherwise
+        onDone={resetTrip} // final leg: trip's over, back to search
         stopsRemaining= {stopsRemaining}
-        etaFailed={etaFailed} // true if the last eta fetch failed
       />
+          </>
         )}
 
         {/* both of these move into the hamburger menu later, they just live here for now */}

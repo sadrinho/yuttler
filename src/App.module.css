@@ -250,8 +250,68 @@
   cursor: pointer;
 }
 
-.primaryButton:active {
+.primaryButton:active:not(:disabled) {
   background: var(--accent-pressed);
+}
+
+/* grayed, never hidden (I'm on board / I'm off before the bus is close) */
+.primaryButton:disabled {
+  background: var(--disabled-bg);
+  color: var(--text-muted-2);
+  cursor: default;
+}
+
+/* ---------- trip states ---------- */
+
+/* 44px round secondary icon button (the cancel X) */
+.iconButton {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--field);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.fieldsCompact {
+  gap: 8px;
+}
+
+.legLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.divider {
+  height: 1px;
+  flex: none;
+  background: var(--divider);
+}
+
+/* noticeable but calm: tint + accent text, no red, no icon, no animation */
+.transferBanner {
+  margin: 0;
+  border-radius: 14px;
+  background: var(--banner-bg);
+  padding: 13px 15px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--banner-text);
+}
+
+.transferBanner strong {
+  font-weight: 600;
 }
 
 /* one line, same height for the hint and the warning, so swapping them moves nothing */
@@ -270,6 +330,7 @@
 }
 
 .primaryButton:focus-visible,
+.iconButton:focus-visible,
 .floatingMenuButton:focus-visible,
 .paneMenuButton:focus-visible,
 .summaryButton:focus-visible,
@@ -308,6 +369,11 @@
 
   .wordmark {
     display: block;
+  }
+
+  /* desktop puts the X at the far right of the menu + wordmark row */
+  .cancelButton {
+    margin-left: auto;
   }
 
   /* fixed 400px left pane. it never collapses, so undo the sheet's collapsed + focus styles */

@@ -80,6 +80,35 @@
   outline-offset: -2px;
 }
 
+/* during a trip: a fixed chip showing what you searched. not tappable at all (the cancel X is the only way out),
+   and pointer-events: none also stops it from ever getting focus, which would grow the mobile sheet */
+.compact,
+.compact:focus-within {
+  height: 44px;
+  border: 0;
+  border-radius: 13px;
+  padding: 0 14px;
+  background: var(--field);
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.compact .input {
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.compact .locationButton {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .compact,
+  .compact:focus-within {
+    height: 46px;
+  }
+}
+
 /* ---------- dropdown ---------- */
 
 .dropdown {

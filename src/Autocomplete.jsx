@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { YALE_PLACES, findPlaceMatches } from './tripPlanner'
 import styles from './Autocomplete.module.css'
 
-function Autocomplete({ placeholder, onSelect, invalid }) { // invalid = warm warning style when "find route" was pressed without this field picked
+function Autocomplete({ placeholder, onSelect, invalid, compact }) { // invalid = warm warning style when "find route" was pressed without this field picked. compact = read-only chip during a trip
   // dropdown autocomplete for user inputs in the start/end fields
   
   // placeholder is just the greyed out text we use before we start typing
@@ -97,9 +97,11 @@ function Autocomplete({ placeholder, onSelect, invalid }) { // invalid = warm wa
   return (
     // the dropdown used to be position: absolute over the page; now it sits in the normal flow under the field and pushes things down (per the design)
     <div className={styles.wrapper}>
-      <div className={`${styles.field} ${invalid ? styles.invalid : ''}`}>
+      <div className={`${styles.field} ${invalid ? styles.invalid : ''} ${compact ? styles.compact : ''}`}>
       <input
         className={styles.input}
+        readOnly={compact} // fixed once a trip starts; the cancel X is the only way out
+        tabIndex={compact ? -1 : undefined}
         placeholder={placeholder}
         value={input}
         onChange={e => { //updates shown text on input
@@ -118,7 +120,7 @@ function Autocomplete({ placeholder, onSelect, invalid }) { // invalid = warm wa
         </svg>
       </button>
       </div>
-      {show && suggestions.length > 0 && (
+      {show && !compact && suggestions.length > 0 && (
         // Q: not sure why we do the second &&
         // A: two separate conditions: show = user is focused, suggestions.length > 0 = theres something to show
         <ul className={styles.dropdown}>

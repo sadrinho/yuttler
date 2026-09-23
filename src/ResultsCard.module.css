@@ -1,0 +1,253 @@
+/* the trip states below the divider (walk only, no route, waiting, skeleton, no buses, eta unavailable, riding).
+   mobile sizes first, desktop steps up in the media query at the bottom */
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.subtitle {
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.accent {
+  color: var(--accent-text);
+}
+
+.accentStrong {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+/* "● Board the Red Line": the dot is the only place the route color shows up in the panel */
+.routeLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  /* same size as the title next to it, so the dot can center itself on the first line (long route names wrap) */
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+/* riding: the route line is subtitle-sized */
+.routeLineSmall {
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+  margin-top: calc((1lh - 12px) / 2); /* 1lh = one line of the text beside it */
+}
+
+/* ---------- hero ---------- */
+
+/* mobile: hero on the left, later buses on the right, bottoms lined up */
+.etaRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+}
+
+.heroCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 132px;
+}
+
+.hero {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--accent-text);
+}
+
+.heroValue {
+  font-size: 58px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.heroUnit {
+  font-size: 29px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* "Bus 1301 · 3 stops away" and the later-bus lines */
+.meta {
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.later {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+
+.laterSlot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--divider);
+}
+
+/* no buses / can't load arrival times, in place of the hero */
+.message {
+  margin: 0;
+  padding: 6px 0 2px;
+  font-size: 19px;
+  line-height: 1.38;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+/* ---------- skeleton ---------- */
+
+/* same size as the real content, so nothing moves when the etas arrive */
+.skelHero,
+.skelLine {
+  background: var(--skeleton);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skelHero {
+  display: block;
+  width: 124px;
+  height: 58px; /* = the hero's line height */
+  border-radius: 10px;
+}
+
+/* sits inside a .meta line, so the line keeps its normal height */
+.skelLine {
+  display: inline-block;
+  height: 14px;
+  border-radius: 7px;
+  vertical-align: middle;
+  animation-delay: 0.15s;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---------- buttons ---------- */
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.helper {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* ---------- desktop ---------- */
+
+@media (min-width: 1024px) {
+  .block {
+    gap: 8px;
+  }
+
+  .title,
+  .routeLine {
+    font-size: 26px;
+  }
+
+  .routeLineSmall {
+    font-size: 20px;
+  }
+
+  .subtitle,
+  .message {
+    font-size: 20px;
+  }
+
+  /* the pane has room, so later buses stack under the hero instead of beside it */
+  .etaRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-top: 8px;
+  }
+
+  .heroValue {
+    font-size: 72px;
+  }
+
+  .heroUnit {
+    font-size: 34px;
+  }
+
+  .skelHero {
+    height: 72px;
+  }
+
+  .meta {
+    font-size: 15px;
+  }
+
+  .later {
+    gap: 8px;
+    padding-bottom: 0;
+  }
+
+  .laterSlot {
+    gap: 8px;
+  }
+
+  .helper {
+    font-size: 14px;
+  }
+
+  /* button pinned to the bottom of the pane */
+  .actions {
+    margin-top: auto;
+  }
+}
