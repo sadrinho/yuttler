@@ -20,7 +20,7 @@ Built by reverse-engineering the undocumented API behind Yale's Downtowner shutt
 
 **Autocomplete search.** Campus landmarks resolve instantly from a curated table with aliases (`akw`, `som`, `div school`). Anything else is geocoded through LocationIQ, bounded roughly to the New Haven area, with results cached on the proxy for 24 hours. A Nominatim fallback exists but is off by default (see below).
 
-**Interactive map** (Leaflet + OpenStreetMap data, CARTO tiles). Before a search it shows only the routes running right now and their buses; after a search it narrows to just the routes your trip uses, with markers for your start, each boarding stop, each transfer, where to get off, and your destination. Tap a bus or stop for a label. Walk-only trips show just the two pins.
+**Interactive map** (Leaflet + OpenStreetMap data, CARTO tiles). Before a search it shows only the routes running right now (ones with a bus on them) and their buses; after a search it narrows to just the routes your trip uses, with markers for your start, each boarding stop, each transfer, where to get off, and your destination. Tap a bus or stop for a label. Walk-only trips show just the two pins.
 
 **Designed for phones first.** On mobile the map fills the screen under a bottom sheet you can hide down to a one-line summary ("Board Blue West in 4 min"); on desktop the same content sits in a 400px side pane. Light and dark themes are a manual toggle in the hamburger menu (it never follows the OS setting) and are remembered between visits; route colors are lightened in dark mode so they stay readable on the dark map. The menu also has a feedback link, credits, and a "Loaded … stops, routes, buses" line. Motion is kept to slides and fades, and everything turns instant if your device has Reduce Motion on.
 
@@ -108,6 +108,8 @@ If your start and destination are less than 400m apart in a straight line, the p
 
 Only counting served stops matters more than it sounds. Before, stops that no running bus visits (a third of them at any given time) could fill the 5 nearest slots and turn a perfectly routable trip into "no route found"; in a sample of 729 trips across the service area, that was half of all failures.
 
+**What counts as "running."** The feed's `active` flag lags the real schedule around shift changes: at 6pm one day it still flagged the daytime Blue as active with no buses on it, and the night Blue as inactive with a bus on it, so a trip got planned onto the empty route and then showed "No buses heading to..." So a route counts as running when a bus is on it right now (`markRunningRoutes` in `tripPlanner.js`), and the planner and the map both use that. Until the first bus answer arrives the app falls back to the flags; after that an empty bus list is taken at face value (service is over), which gives "No shuttles are running right now." instead of a trip on a route nobody is driving.
+
 When there really is no route, the planner says why instead of just failing. It returns a `reason`, checked in this order: no shuttles are running at all; the start or destination is more than ~800m from any shuttle stop (outside the area); a route goes there but isn't running right now (it reruns the search with inactive routes included, and names them); no *running* route stops within ~800m; or none of those, and the stops just don't connect. The app turns that into a sentence like "The Gold Route goes there, but it isn't running right now."
 
 ### Layering
@@ -191,7 +193,8 @@ It covers the zero-length path case: when the same stop is the nearest to both e
 - **No loop wrap-around.** Routes are circular, but `route.stops` is a flat array and edges only run forward through it. A trip that crosses the loop's seam returns "no route found" even when a bus makes that exact trip. This is the highest-impact known bug.
 - **No walk edges between nearby stops.** Directional variants like `130 Prospect Street (N)` and `(S)` are distinct IDs and unconnected in the graph, so a transfer that amounts to crossing the street is invisible to the search.
 - **Proximity thresholds are guesses.** The `stopsRemaining <= 4` gate on both the board and alight buttons was never calibrated against real values.
-- **No ETA validation.** A trip can be planned whose boarding or alighting stop has no inbound buses, or only very distant ones. The planner doesn't check whether a structurally valid route is actually rideable.
+- **No ETA validation.** Routes with no bus on them are skipped, but a route with a bus can still have none heading to your stop soon (e.g. a single bus that just went past), or only a very late one. The planner doesn't use ETAs to check that a structurally valid route is actually rideable.
+- **Stop counter on out-and-back routes.** Green and Purple - West Campus visit some stops twice (in and back out among the Buildings). The "N stops away" counter uses the first occurrence of each stop in the route's list, so on those two routes it can badly overcount and keep "I'm on board" / "I'm off" disabled while the bus is actually close.
 - **No route segment trimming.** The map draws each leg's entire loop rather than just the segment you ride.
 - **Autocomplete race condition.** A stale geocoder response can append to the suggestion list after it's no longer relevant.
 - **No automatic retry for stops/routes.** They're fetched once on load; if that fails, the error screen's Retry button reloads the page. While they load, the search shows "Loading routes…" and Find route waits.
