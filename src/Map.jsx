@@ -3,6 +3,10 @@ import L from 'leaflet' // for L.divIcon. every marker is plain html now (styled
 import { routeColor } from './routeColor'
 import styles from './Map.module.css'
 
+// reduce motion setting: turn off leaflet's own zoom/fade animations too. they're only read when the map is
+// created, so this is checked once at load (changing the setting takes effect on the next page load)
+const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
 // icons are cached so a re-render (every keystroke, every 10s bus poll) reuses the same icon object.
 // react-leaflet only swaps a marker's icon when the object changes, so this keeps the existing marker dom in place
 const iconCache = {}
@@ -94,7 +98,7 @@ function Map( { tripResult, routes, darkMode, buses }) {
 
   return ( //anytime we want to do anything within the map instance, we have to perform that within <MapContainer>, since it uses React Context to give its children access to the map instance
     // fills its wrapper in App, which never changes size. no +/- buttons (pinch/scroll/double-tap still zoom) and no built-in attribution (see ATTRIBUTION)
-    <MapContainer center={[41.3116, -72.9271]} zoom={15} zoomControl={false} attributionControl={false} style={{ height: '100%', width: '100%' }}>
+    <MapContainer center={[41.3116, -72.9271]} zoom={15} zoomControl={false} attributionControl={false} zoomAnimation={!reducedMotion} fadeAnimation={!reducedMotion} markerZoomAnimation={!reducedMotion} style={{ height: '100%', width: '100%' }}>
 
       {/* creates the map tiles */}
       <TileLayer 

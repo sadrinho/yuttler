@@ -1,14 +1,17 @@
-/* hamburger menu. closed = panel slid off to the left + invisible backdrop (step 8 adds the slide/fade transitions) */
+/* hamburger menu. closed = panel slid off to the left + invisible backdrop. opening/closing slides the panel
+   and fades the backdrop (240ms, transform + opacity only) */
 
 .menu {
   position: fixed;
   inset: 0;
   z-index: 50; /* over the sheet, pane and floating button; under the splash */
   visibility: hidden; /* also hides the panel's shadow while it's off-screen */
+  transition: visibility 0s linear 240ms; /* closing: stay visible until the slide-out finishes */
 }
 
 .menu.open {
   visibility: visible;
+  transition: none; /* opening: visible straight away so the slide-in can be seen */
 }
 
 .backdrop {
@@ -16,6 +19,7 @@
   inset: 0;
   background: var(--backdrop);
   opacity: 0;
+  transition: opacity 240ms ease;
 }
 
 .open .backdrop {
@@ -35,6 +39,7 @@
   display: flex;
   flex-direction: column;
   transform: translateX(-100%);
+  transition: transform 240ms var(--ease-slide);
   outline: none; /* it only takes focus so keyboard users start inside the menu */
 }
 
@@ -118,6 +123,9 @@
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out; /* the selected half eases across instead of snapping */
 }
 
 .segmented button.selected {
@@ -140,6 +148,7 @@
   font-weight: 600;
   line-height: 1.32;
   text-decoration: none;
+  transition: background-color 120ms ease-out;
 }
 
 .feedbackRow svg {

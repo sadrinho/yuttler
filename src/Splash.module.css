@@ -65,6 +65,13 @@
   }
 }
 
+/* reduce motion: the global rule in index.css stops the spin; show a still, dimmed ring instead */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    opacity: 0.4;
+  }
+}
+
 /* ---------- load failed ---------- */
 
 .failed {
@@ -112,6 +119,7 @@
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 120ms ease-out;
 }
 
 .retry:active {

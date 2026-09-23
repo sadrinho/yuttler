@@ -101,10 +101,12 @@
   border-radius: 28px 28px 0 0;
   box-shadow: var(--shadow-sheet);
   visibility: hidden; /* also takes it out of the tab order while the sheet is open */
+  transition: visibility 0s linear 260ms; /* when the sheet comes back up, stay visible until it has covered us */
 }
 
 .collapsedBarShown {
   visibility: visible;
+  transition: none; /* when the sheet hides, show up straight away underneath it */
 }
 
 .summaryButton {
@@ -165,6 +167,11 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* Hide / Show is a slide of the sheet only (the map underneath never moves or resizes).
+     coming back up it's visible straight away; see .panelCollapsed for the way down */
+  transition:
+    transform 260ms var(--ease-slide),
+    visibility 0s linear 0s;
 }
 
 /* typing in a field: grow to full height (up to 16px under the menu button) so the dropdown clears the keyboard. css only, per the design.
@@ -175,7 +182,11 @@
 
 .panelCollapsed {
   transform: translateY(100%);
-  visibility: hidden; /* hides its shadow + attribution too, and keeps its fields out of the tab order */
+  visibility: hidden; /* hides its shadow too, and keeps its fields out of the tab order */
+  /* on the way down, only turn invisible once the slide has finished */
+  transition:
+    transform 260ms var(--ease-slide),
+    visibility 0s linear 260ms;
 }
 
 .panelHeader {
@@ -239,6 +250,24 @@
 
 .primaryButton:active:not(:disabled) {
   background: var(--accent-pressed);
+}
+
+/* button presses ease their color in (120ms) instead of snapping. the secondary buttons get a pressed shade too,
+   so there's something to ease to */
+.primaryButton,
+.iconButton,
+.cancelArmed,
+.hideButton,
+.paneMenuButton,
+.chevron {
+  transition: background-color 120ms ease-out;
+}
+
+.iconButton:active,
+.hideButton:active,
+.paneMenuButton:active,
+.summaryButton:active .chevron {
+  background: var(--field-border);
 }
 
 /* grayed, never hidden (I'm on board / I'm off before the bus is close) */
@@ -389,6 +418,7 @@
     gap: 18px;
     transform: none;
     visibility: visible;
+    transition: none; /* the pane never slides */
   }
 
   .panelBody {

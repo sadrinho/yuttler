@@ -133,6 +133,7 @@
   line-height: 1.2;
   color: var(--ink);
   cursor: pointer;
+  transition: background-color 120ms ease-out;
 }
 
 .row + .row {
