@@ -8,7 +8,7 @@ Built by reverse-engineering the undocumented API behind Yale's Downtowner shutt
 
 [Visit Yuttler](https://www.yuttler.com)
 
-**Note: The website is currently hosted on Render's free tier, which means the back end takes ~30-50 seconds to spin up following inactivity -- as of 9/22, I'm working to get funding for a higher tier! Until it's up, the search shows "Loading routes…" and Find route waits.**
+**Note: As of 9/23, the back end runs on a paid Render instance that stays awake, so there's no more 30-50 second spin-up after inactivity.**
 
 ## Features
 
@@ -174,15 +174,7 @@ The production proxy needs `LOCATIONIQ_KEY`, `ALLOWED_ORIGIN` (including the pro
 
 ## Tests
 
-The graph layer has a standalone test harness at the project root:
-
-```
-node graph.test.mjs
-```
-
-27 assertions over hand-verifiable toy routes rather than live data, covering edge counts and shape, adjacency accumulation when a stop is served by two routes, final stops getting an empty-but-present adjacency entry, direct and transfer paths, unreachable destinations, missing stop IDs, start-equals-end, and number/string ID mismatches. One test deliberately declares a two-hop route before a one-hop route, to catch a search that returns first-found rather than shortest.
-
-`planTrip` has its own harness:
+`planTrip` has a standalone test harness at the project root:
 
 ```
 node planTrip.test.mjs
@@ -198,7 +190,7 @@ It covers the zero-length path case: when the same stop is the nearest to both e
 - **No ETA validation.** A trip can be planned whose boarding or alighting stop has no inbound buses, or only very distant ones. The planner doesn't check whether a structurally valid route is actually rideable.
 - **No route segment trimming.** The map draws each leg's entire loop rather than just the segment you ride.
 - **Autocomplete race condition.** A stale geocoder response can append to the suggestion list after it's no longer relevant.
-- **No automatic retry for stops/routes.** They're fetched once on load; if that fails, the error screen's Retry button reloads the page. A slow Render cold start just shows "Loading routes…" for a while.
+- **No automatic retry for stops/routes.** They're fetched once on load; if that fails, the error screen's Retry button reloads the page. While they load, the search shows "Loading routes…" and Find route waits.
 - **ETA cache is uncapped.** The proxy keeps one entry per distinct stop ID requested. Only a concern under abuse; there's no per-IP rate limiting yet.
 - **Existing lint errors.** ESLint flags two synchronous `setState` calls inside effects (`App.jsx`, `Autocomplete.jsx`) and a missing `leg` dependency.
 
