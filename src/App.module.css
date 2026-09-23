@@ -101,12 +101,14 @@
   border-radius: 28px 28px 0 0;
   box-shadow: var(--shadow-sheet);
   visibility: hidden; /* also takes it out of the tab order while the sheet is open */
-  transition: visibility 0s linear 260ms; /* when the sheet comes back up, stay visible until it has covered us */
+  transition: none; /* when the sheet comes back up, hide straight away: the sheet appears in exactly our spot */
 }
 
+/* only appear once the sheet has landed exactly where we are (see .panelCollapsed), so there's never a second
+   sheet edge on screen during the slide */
 .collapsedBarShown {
   visibility: visible;
-  transition: none; /* when the sheet hides, show up straight away underneath it */
+  transition: visibility 0s linear 260ms;
 }
 
 .summaryButton {
@@ -180,8 +182,11 @@
   top: calc(env(safe-area-inset-top, 0px) + 76px);
 }
 
+/* hide slides the sheet down until only a bar-sized strip is left, i.e. its top edge lands exactly where the collapsed
+   bar's top edge is (bar = 18px top padding + 44px chevron + bottom safe area). then the two swap in the same frame.
+   one sheet sliding, no second edge showing up underneath it */
 .panelCollapsed {
-  transform: translateY(100%);
+  transform: translateY(calc(100% - 62px - max(34px, env(safe-area-inset-bottom, 0px))));
   visibility: hidden; /* hides its shadow too, and keeps its fields out of the tab order */
   /* on the way down, only turn invisible once the slide has finished */
   transition:
