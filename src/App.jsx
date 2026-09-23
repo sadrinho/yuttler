@@ -325,7 +325,12 @@ function App() {
       </div>
 
       {/* the panel: bottom sheet on mobile, fixed 400px left pane on desktop */}
-      <aside className={`${styles.panel} ${panelExpanded ? '' : styles.panelCollapsed}`}>
+      <aside
+        className={`${styles.panel} ${panelExpanded ? '' : styles.panelCollapsed}`}
+        // pressing a button normally steals focus from the field you're typing in, which shrinks the sheet mid-tap
+        // and the click lands somewhere else. stopping that focus move keeps everything still until the click happens
+        onMouseDown={(e) => { if (e.target.closest('button')) e.preventDefault(); }}
+      >
         <div className={styles.sheetAttribution} dangerouslySetInnerHTML={{ __html: ATTRIBUTION }} />
 
         <div className={styles.panelHeader}>
@@ -351,7 +356,7 @@ function App() {
           onSelect={(suggestion) => setEndCoords(suggestion)}
         />
 
-        <button onClick={handleSearch}>Find Route</button>
+        <button onClick={() => { document.activeElement?.blur(); handleSearch(); }}>Find Route</button> {/* blur so the keyboard closes and the sheet settles once the search runs */}
 
       <ResultsCard
         result={tripResult} // really only useful for checking if walk-only or if null bc guard rn checks if tripresult is null, not leg (but if tripresult is null that should imply the latter is null too)

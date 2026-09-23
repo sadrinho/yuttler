@@ -180,8 +180,9 @@
   gap: 14px;
 }
 
-/* typing in a field: grow to full height (up to 16px under the menu button) so the dropdown clears the keyboard. css only, per the design */
-.panel:focus-within {
+/* typing in a field: grow to full height (up to 16px under the menu button) so the dropdown clears the keyboard. css only, per the design.
+   inputs only, not :focus-within, or pressing any button would grow the sheet and move the button out from under your finger */
+.panel:has(input:focus) {
   top: calc(env(safe-area-inset-top, 0px) + 76px);
 }
 
@@ -264,7 +265,7 @@
 
   /* fixed 400px left pane. it never collapses, so undo the sheet's collapsed + focus styles */
   .panel,
-  .panel:focus-within,
+  .panel:has(input:focus),
   .panelCollapsed {
     top: 0;
     right: auto;
