@@ -1,4 +1,5 @@
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
+import { useEffect, useRef } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet' // for L.divIcon. every marker is plain html now (styled in Map.module.css), no more png pins
 import { routeColor } from './routeColor'
 import styles from './Map.module.css'
@@ -36,6 +37,15 @@ function makeStopIcon(color) { // white dot with a ring in the route color (boar
   }))
 }
 
+function makeSpotIcon() { // small accent dot where you tapped the map for nearby stops
+  return cachedIcon('spot', () => L.divIcon({
+    className: styles.markerReset,
+    html: `<div class="${styles.spot}"></div>`,
+    iconSize: [18, 18], // 12px + 3px border each side
+    iconAnchor: [9, 9],
+  }))
+}
+
 function makePinIcon(kind) { // teardrop; its colors come from the theme tokens, so one icon works in both themes
   return cachedIcon(`pin|${kind}`, () => L.divIcon({
     className: styles.markerReset,
@@ -62,12 +72,72 @@ function pairUp(flat)
 // the LocationIQ credit (search results) lives in the hamburger menu instead, which their TOS allows
 export const ATTRIBUTION = '© OpenStreetMap contributors © CARTO'
 
+// a tap on the map (not a drag, pinch or double-tap zoom) calls onTap with { lat, lon }.
+// waits out the double-tap window first, so zooming in with a double tap doesn't also open the nearby list.
+// and a tap that just closed a bus popup is only dismissing it, so that doesn't count either
+function TapHandler({ onTap }) {
+  const timer = useRef(null)
+  const popupClosedAt = useRef(0)
+  useEffect(() => () => clearTimeout(timer.current), [])
+  useMapEvents({
+    popupclose() { popupClosedAt.current = Date.now() },
+    click(e) {
+      if (Date.now() - popupClosedAt.current < 300) return
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => onTap({ lat: e.latlng.lat, lon: e.latlng.lng }), 250)
+    },
+    dblclick() { clearTimeout(timer.current) },
+  })
+  return null
+}
+
+// moves the map to show `points` whenever fitKey changes (not on every bus poll), clear of the mobile sheet (sheetRef).
+// the sheet often changes height right after (arrival times load in, rows get added), so it re-fits when it resizes,
+// but only until you touch the map yourself: after that, the map is yours
+function FitView({ points, fitKey, sheetRef }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!fitKey || points.length === 0) return
+    const bounds = L.latLngBounds(points)
+    const sheet = sheetRef?.current
+
+    function fit() {
+      // how much of the map the sheet covers. desktop's pane sits beside the map, not over it
+      const covered = window.innerWidth >= 1024 || !sheet ? 0 : Math.max(0, window.innerHeight - sheet.getBoundingClientRect().top)
+      // never leave less than 160px of map to fit into, whatever the sheet is doing (e.g. full height for the keyboard)
+      const bottom = Math.min(covered, Math.max(0, map.getSize().y - 80 - 40 - 160))
+      map.fitBounds(bounds, {
+        paddingTopLeft: [40, 80], // clear of the menu button and attribution
+        paddingBottomRight: [40, bottom + 40],
+        maxZoom: 17, // one stop on its own shouldn't zoom all the way in
+        animate: !reducedMotion,
+      })
+    }
+    fit()
+
+    const container = map.getContainer()
+    const observer = new ResizeObserver(() => fit())
+    function stop() { observer.disconnect() } // you touched the map: stop moving it
+    if (sheet) observer.observe(sheet)
+    container.addEventListener('pointerdown', stop)
+    container.addEventListener('wheel', stop)
+    return () => {
+      observer.disconnect()
+      container.removeEventListener('pointerdown', stop)
+      container.removeEventListener('wheel', stop)
+    }
+  }, [fitKey]) // eslint-disable-line react-hooks/exhaustive-deps -- points is new every render; fitKey says when it really changed
+  return null
+}
+
 // tripResult can be:
     // null = nothing searched yet
     // {success: false, message: ...} = search failed
     // {success: true, walkOnly: true, ...} = close enough to walk
     // {success: true, legs, startCoords, endCoords} = a valid trip
-function Map( { tripResult, routes, darkMode, buses }) {
+// stopMarkers: stops the stop view is showing, as { id, lat, lon, selected }. tapping one calls onStopTap(id)
+// tappedSpot: where you tapped for nearby stops, or null. onMapTap: null while a tap shouldn't do anything (during a bus trip)
+function Map( { tripResult, routes, darkMode, buses, stopMarkers = [], tappedSpot, onMapTap, onStopTap, fitKey, sheetRef }) {
 
   // we use a Set because lookup is o(1), we don't have any duplicates, and it makes sense to key our routes by insertion order
   const tripRouteIds = new Set(tripResult?.legs?.map(leg => leg.route.id)) 
@@ -176,6 +246,27 @@ function Map( { tripResult, routes, darkMode, buses }) {
             </Popup>
           </Marker>
         )}
+
+        {/* stop view: the nearby stops (neutral rings) or the one stop whose board is open (accent ring). tap one for its board */}
+        {stopMarkers.map(stop => (
+          <Marker
+            key={`view-${stop.id}`}
+            position={[stop.lat, stop.lon]}
+            icon={makeStopIcon(stop.selected ? 'var(--accent-text)' : 'var(--text-tertiary)')}
+            zIndexOffset={10000}
+            eventHandlers={{ click: () => onStopTap?.(stop.id) }}
+          />
+        ))}
+        {tappedSpot && (
+          <Marker position={[tappedSpot.lat, tappedSpot.lon]} icon={makeSpotIcon()} zIndexOffset={9000} interactive={false} />
+        )}
+
+        {onMapTap && <TapHandler onTap={onMapTap} />}
+        <FitView
+          points={[...stopMarkers.map(stop => [stop.lat, stop.lon]), ...(tappedSpot ? [[tappedSpot.lat, tappedSpot.lon]] : [])]}
+          fitKey={fitKey}
+          sheetRef={sheetRef}
+        />
 
         {/* start + destination pins, on top of everything. no popups (the design has none) */}
         {tripResult?.success && ( // order matters incase tripResult = null.

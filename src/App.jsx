@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { planTrip, markRunningRoutes } from "./tripPlanner";
+import { planTrip, markRunningRoutes, getDistance } from "./tripPlanner";
+import { nearbyStops } from "./stops";
+import { NearbyList, StopBoard } from "./StopView";
 import Autocomplete from "./Autocomplete";
 import Map, { ATTRIBUTION } from "./Map";
 import styles from "./App.module.css";
@@ -63,9 +65,18 @@ function ResultsCard({
   onDone,
   stopsRemaining,
   legColor,
+  onNearby,
 }) {
   if (view === "noRoute") {
-    return <div className={card.title}>{noRouteCopy(result).text}</div>; // says why, when planTrip can tell
+    return (
+      <>
+        <div className={card.title}>{noRouteCopy(result).text}</div> {/* says why, when planTrip can tell */}
+        {/* not a dead end: see what's actually coming near the start */}
+        <button type="button" className={styles.secondaryButton} onClick={onNearby}>
+          See buses near you
+        </button>
+      </>
+    );
   }
 
   if (view === "walk") {
@@ -277,6 +288,18 @@ function App() {
   const [panelExpanded, setPanelExpanded] = useState(true); // mobile only: bottom sheet open vs collapsed to its one-line bar. desktop ignores it
   const [cancelArmed, setCancelArmed] = useState(false); // true after the first tap on the X: it's showing "Cancel trip" and the next tap ends the trip
   const cancelRef = useRef(null);
+
+  // the nearby stops list / stop board, shown in the panel in place of the search fields. null = closed.
+  // { source: 'start' | 'device' | 'map', near: { lat, lon } | 'locating' | 'failed', stopId: board's stop or null (= the list), query: stop search text }
+  const [stopView, setStopView] = useState(null);
+  const panelRef = useRef(null); // the map measures how much of it the mobile sheet covers
+  const [showTapHint, setShowTapHint] = useState(() => {
+    try {
+      return localStorage.getItem("mapTapHintSeen") !== "1";
+    } catch {
+      return true; // storage blocked: show it, it just won't stay dismissed
+    }
+  });
 
   const [menuOpen, setMenuOpen] = useState(false); // hamburger menu
   const menuOpener = useRef(null); // whichever hamburger opened it, so focus can go back there on close
@@ -495,6 +518,33 @@ function App() {
     resetTrip();
   }
 
+  function openNearby(source, near) {
+    // drop focus from a search field first: while one's focused the sheet is full height, and the map would fit the
+    // stops into the sliver left above it (the field gets hidden, but it can still hold focus when the map measures)
+    document.activeElement?.blur();
+    setStopView({ source, near, stopId: null, query: "" });
+    setPanelExpanded(true); // a map tap with the sheet hidden should still show the list
+  }
+
+  // the Nearby stops button: around your starting point if you've picked one, otherwise around you
+  function openNearbyFromButton() {
+    if (startCoords) return openNearby("start", { lat: startCoords.lat, lon: startCoords.lon });
+    if (!navigator.geolocation) return openNearby("device", "failed");
+    openNearby("device", "locating");
+    // only update if we're still waiting on this (you may have gone back or tapped the map in the meantime)
+    const settle = (near) => setStopView((v) => (v?.near === "locating" ? { ...v, near } : v));
+    navigator.geolocation.getCurrentPosition(
+      (pos) => settle({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      () => settle("failed"), // denied, unavailable or timed out
+      { timeout: 10000, maximumAge: 60000 },
+    );
+  }
+
+  // back from a board goes to the list it came from (if any), back from the list closes the stop view
+  function stopViewBack() {
+    setStopView((v) => (v?.stopId != null && v.near ? { ...v, stopId: null } : null));
+  }
+
   function handleAlight() {
     // called when a user gets off their current bus to alight stops
     setBoardedBusId(null);
@@ -553,8 +603,45 @@ function App() {
   const isTransfer = inBusTrip && !boardedBusId && currentLeg > 0; // off one bus, waiting for the next at the same stop
   const legColor = leg ? routeColor(leg.route.color, darkMode) : null; // same color the map uses for this route
 
+  // ---- stop view (nearby list / stop board) ----
+  const nearCenter = typeof stopView?.near === "object" ? stopView.near : null; // a real point, not locating/failed
+  const nearby = useMemo(
+    () => (nearCenter ? nearbyStops(nearCenter.lat, nearCenter.lon, stops, runningRoutes) : null),
+    [nearCenter, stops, runningRoutes],
+  );
+  const boardStop = stopView?.stopId != null ? stops.find((stop) => stop.id === stopView.stopId) : null;
+
+  // what the map shows for it: the board's one stop, or the list's stops (hidden while searching by name)
+  const stopMarkers = boardStop
+    ? [{ id: boardStop.id, lat: boardStop.lat, lon: boardStop.lon, selected: true }]
+    : nearby && !stopView.query.trim()
+      ? nearby.stops.map((stop) => ({ id: stop.id, lat: stop.lat, lon: stop.lon, selected: false }))
+      : [];
+  const tappedSpot = stopView?.source === "map" && !boardStop ? nearCenter : null;
+  // the map re-fits only when this changes, i.e. a different stop or set of stops, never on a poll
+  const fitKey = stopMarkers.length > 0 ? stopMarkers.map((stop) => stop.id).join(",") + (tappedSpot ? `@${tappedSpot.lat},${tappedSpot.lon}` : "") : null;
+
+  // tapping the map: nearby stops around that spot. not during a bus trip, where Cancel is the only way out
+  function handleMapTap(point) {
+    openNearby("map", point); // (also closes the keyboard if a field was open)
+    if (showTapHint) {
+      setShowTapHint(false); // they've found it, no need for the tip anymore
+      try {
+        localStorage.setItem("mapTapHintSeen", "1");
+      } catch {
+        // storage blocked, the tip comes back next visit
+      }
+    }
+  }
+
+  function pickStop(stopId) {
+    document.activeElement?.blur(); // the stop search field, if that's where it came from
+    setStopView((v) => ({ ...v, stopId }));
+  }
+
   // the one-liner on the collapsed mobile bar
   function collapsedSummary() {
+    if (stopView) return boardStop ? boardStop.name : "Nearby stops";
     const eta = relevantEtas[0]?.avg;
     switch (tripView) {
       case null:
@@ -595,6 +682,12 @@ function App() {
           routes={runningRoutes} // same "running" as the planner, so the map shows the routes that actually have buses
           darkMode={darkMode}
           buses={buses}
+          stopMarkers={stopMarkers}
+          tappedSpot={tappedSpot}
+          onMapTap={inBusTrip ? null : handleMapTap}
+          onStopTap={pickStop}
+          fitKey={fitKey}
+          sheetRef={panelRef} // so the map can keep the stops clear of the sheet
         />
       </div>
 
@@ -639,6 +732,7 @@ function App() {
 
       {/* the panel: bottom sheet on mobile, fixed 400px left pane on desktop */}
       <aside
+        ref={panelRef}
         className={`${styles.panel} ${panelExpanded ? "" : styles.panelCollapsed}`}
         // pressing a button normally steals focus from the field you're typing in, which shrinks the sheet mid-tap
         // and the click lands somewhere else. stopping that focus move keeps everything still until the click happens
@@ -674,7 +768,7 @@ function App() {
 
           {/* cancel X: left on mobile, far right on desktop. shown in every result state; the only way out of a trip.
               same button element in both looks (X, then the armed "Cancel trip" pill), so it doesn't remount between taps */}
-          {tripView !== null && (
+          {tripView !== null && !stopView && ( // the stop view has its own back button; the X would clear the result underneath
             <button
               ref={cancelRef}
               type="button"
@@ -715,6 +809,31 @@ function App() {
         </div>
 
         <div className={styles.panelBody}>
+          {stopView &&
+            (boardStop ? (
+              <StopBoard
+                key={boardStop.id} // fresh board (and skeleton) per stop
+                stop={boardStop}
+                distance={nearCenter ? getDistance(nearCenter.lat, nearCenter.lon, boardStop.lat, boardStop.lon) : null}
+                routes={runningRoutes}
+                darkMode={darkMode}
+                onBack={stopViewBack}
+              />
+            ) : (
+              <NearbyList
+                view={stopView}
+                nearby={nearby}
+                stops={stops}
+                routes={runningRoutes}
+                darkMode={darkMode}
+                onQueryChange={(query) => setStopView((v) => ({ ...v, query }))}
+                onPickStop={pickStop}
+                onBack={stopViewBack}
+              />
+            ))}
+
+          {/* the normal search / trip content. hidden, not unmounted, while the stop view is open, so the fields keep what you typed */}
+          <div className={stopView ? styles.hiddenView : styles.mainView}>
           {isTransfer && ( // calm, not alarming: tinted card, accent text, no icon
             <p className={styles.transferBanner}>
               Transfer: stay at <strong>{leg.boardStop.name}</strong> and board
@@ -768,6 +887,15 @@ function App() {
                     ? "Loading routes…"
                     : "Enter a start and end location above"}
               </p>
+              <button type="button" className={styles.secondaryButton} disabled={loading} onClick={openNearbyFromButton}>
+                Nearby stops
+              </button>
+              {showTapHint && (
+                <p className={styles.hint}>
+                  Tip: <span className={styles.mobileOnly}>tap</span>
+                  <span className={styles.desktopOnly}>click</span> the map to see buses near any spot
+                </p>
+              )}
             </>
           ) : (
             <>
@@ -784,9 +912,11 @@ function App() {
                 onDone={resetTrip} // final leg: trip's over, back to search
                 stopsRemaining={stopsRemaining}
                 legColor={legColor} // route color, lightened in dark theme
+                onNearby={() => startCoords && openNearby("start", { lat: startCoords.lat, lon: startCoords.lon })}
               />
             </>
           )}
+          </div>
         </div>
       </aside>
 

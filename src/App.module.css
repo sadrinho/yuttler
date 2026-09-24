@@ -309,6 +309,46 @@
   background: var(--field-border);
 }
 
+/* full-width secondary pill (Nearby stops, See buses near you): same shape as the primary one, field-colored */
+.secondaryButton {
+  width: 100%;
+  height: 48px;
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--field);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.secondaryButton:active:not(:disabled) {
+  background: var(--field-border);
+}
+
+.secondaryButton:disabled {
+  color: var(--text-muted-2);
+  cursor: default;
+}
+
+/* the search / trip content: display: contents so wrapping it changes nothing about the layout.
+   hidden (not unmounted) while the stop view is open, so the fields keep what you typed */
+.mainView {
+  display: contents;
+}
+
+.hiddenView {
+  display: none;
+}
+
+/* "tap" on phones, "click" on desktop */
+.desktopOnly {
+  display: none;
+}
+
 /* grayed, never hidden (I'm on board / I'm off before the bus is close) */
 .primaryButton:disabled {
   background: var(--disabled-bg);
@@ -405,7 +445,8 @@
 .floatingMenuButton:focus-visible,
 .paneMenuButton:focus-visible,
 .summaryButton:focus-visible,
-.hideButton:focus-visible {
+.hideButton:focus-visible,
+.secondaryButton:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
@@ -432,6 +473,14 @@
 
   .paneMenuButton {
     display: flex;
+  }
+
+  .mobileOnly {
+    display: none;
+  }
+
+  .desktopOnly {
+    display: inline;
   }
 
   .wordmark {

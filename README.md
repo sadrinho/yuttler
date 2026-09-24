@@ -16,6 +16,8 @@ Built by reverse-engineering the undocumented API behind Yale's Downtowner shutt
 
 **Live buses and arrival times.** Bus positions refresh every 10 seconds and render as circles in their route's color, with a small arrow showing which way each bus is heading. Arrival estimates for your boarding stop refresh every 30 seconds. Both polls pause while the tab is in the background and refresh as soon as it comes back.
 
+**Stop boards and nearby stops.** See what's coming without planning a trip. **Nearby stops** (under Find route) lists the stops within about a 5 minute walk of your starting point, or of you if you haven't picked one, each with its soonest bus; a search box finds any stop by name. Tapping anywhere on the map does the same around that spot (a one-time tip says so), with no stop pins cluttering the map: only the stops in the list get small rings, and the map moves to show them above the sheet. Pick a stop (in the list or its ring) for its board: every route that stops there, soonest bus first, with the next 2–3 arrival times, and underneath, the routes that stop there but have nothing coming ("Not running" or "Nothing coming"), so nothing about the stop is hidden. If nothing is within 400m, the list says so and shows the 3 closest stops anyway. The stop view is off during a bus trip (Cancel stays the only way out); the helpers are in `src/stops.js`, the views in `src/StopView.jsx`.
+
 **Turn-by-turn ride guidance.** The panel shows only what you need to do right now: walk to a stop, board a named bus (with the next arrival as a big live countdown and the two after it underneath), ride until your alight stop, transfer, repeat. "I'm on board" and "I'm off" advance the trip once your bus is 4 or fewer stops away, and "Done" ends it on the final leg. Cancelling takes two taps (the X turns into a red "Cancel trip" button), so a stray tap can't lose your trip.
 
 **Autocomplete search.** Campus landmarks resolve instantly from a curated table with aliases (`akw`, `som`, `div school`). Anything else is geocoded through LocationIQ, bounded roughly to the New Haven area, with results cached on the proxy for 24 hours. A Nominatim fallback exists but is off by default (see below).
@@ -110,7 +112,7 @@ Only counting served stops matters more than it sounds. Before, stops that no ru
 
 **What counts as "running."** The feed's `active` flag lags the real schedule around shift changes: at 6pm one day it still flagged the daytime Blue as active with no buses on it, and the night Blue as inactive with a bus on it, so a trip got planned onto the empty route and then showed "No buses heading to..." So a route counts as running when a bus is on it right now (`markRunningRoutes` in `tripPlanner.js`), and the planner and the map both use that. Until the first bus answer arrives the app falls back to the flags; after that an empty bus list is taken at face value (service is over), which gives "No shuttles are running right now." instead of a trip on a route nobody is driving.
 
-When there really is no route, the planner says why instead of just failing. It returns a `reason`, checked in this order: no shuttles are running at all; the start or destination is more than ~800m from any shuttle stop (outside the area); a route goes there but isn't running right now (it reruns the search with inactive routes included, and names them); no *running* route stops within ~800m; or none of those, and the stops just don't connect. The app turns that into a sentence like "The Gold Route goes there, but it isn't running right now."
+When there really is no route, the planner says why instead of just failing. It returns a `reason`, checked in this order: no shuttles are running at all; the start or destination is more than ~800m from any shuttle stop (outside the area); a route goes there but isn't running right now (it reruns the search with inactive routes included, and names them); no *running* route stops within ~800m; or none of those, and the stops just don't connect. The app turns that into a sentence like "The Gold Route goes there, but it isn't running right now.", with a **See buses near you** button under it that opens the nearby stops around your starting point, so a failed search is never a dead end.
 
 ### Layering
 
@@ -180,11 +182,14 @@ The production proxy needs `LOCATIONIQ_KEY`, `ALLOWED_ORIGIN` (including the pro
 
 ## Tests
 
-`planTrip` has a standalone test harness at the project root:
+`planTrip` and the stop board helpers each have a standalone test harness at the project root:
 
 ```
 node planTrip.test.mjs
+node stops.test.mjs
 ```
+
+`stops.test.mjs` covers picking nearby stops (running routes only, at most 5 within 400m, the 3-closest fallback, the nothing-running case), stop search, and grouping a stop's arrivals by route.
 
 It covers the zero-length path case: when the same stop is the nearest to both ends, `planTrip` must return "No route found" rather than `success: true` with no legs, and a real path must still win when zero-length candidates exist alongside it.
 
@@ -206,6 +211,8 @@ It covers the zero-length path case: when the same stop is the nearest to both e
 ### V4 (shipping version)
 
 **Visual and UX overhaul.** ✅ Done (9/23) — fullscreen map with a mobile bottom sheet and desktop side pane, light/dark themes, and real error and empty states (no route, no buses, arrival times unavailable, server unreachable).
+
+**Stop boards and nearby stops.** ✅ Done (9/24) — see [Features](#features). Next up: a routes menu (toggle routes and stops on the map), then a trip builder that starts from a stop board.
 
 **Proxy caching.** ✅ Done — see [Caching and failure handling](#caching-and-failure-handling).
 

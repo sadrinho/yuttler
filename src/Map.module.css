@@ -47,6 +47,16 @@
   box-shadow: var(--shadow-stop);
 }
 
+/* where you tapped the map for nearby stops */
+.spot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-text);
+  border: 3px solid var(--marker-outline);
+  box-shadow: var(--shadow-stop);
+}
+
 /* ---------- start / destination pins ---------- */
 
 /* teardrop: a square with one sharp corner, turned so the sharp corner points straight down at the spot */
