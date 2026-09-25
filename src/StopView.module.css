@@ -213,6 +213,35 @@
   white-space: nowrap;
 }
 
+/* an arriving route you can tap to ride (trip builder): the same row as a button */
+.rideRow {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 120ms ease-out;
+}
+
+.rideRow:active {
+  background: var(--field);
+}
+
+.rideRow:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: -2px;
+}
+
+.hintLine {
+  margin: -6px 0 0;
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--text-muted);
+}
+
 /* routes with nothing coming: still listed so the stop isn't a black box, just quieter */
 .dim .routeName {
   font-weight: 400;

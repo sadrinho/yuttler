@@ -3,6 +3,8 @@ import { planTrip, markRunningRoutes, getDistance } from "./tripPlanner";
 import { nearbyStops } from "./stops";
 import { NearbyList, StopBoard } from "./StopView";
 import { RoutesView } from "./RoutesView";
+import { RideView, TripSummary } from "./TripBuilderView";
+import { MAX_LEGS, builtTrip } from "./tripBuilder";
 import { readPrefs, visibleRouteIds, stopsOnRoutes } from "./routeList";
 import Autocomplete from "./Autocomplete";
 import Map, { ATTRIBUTION } from "./Map";
@@ -302,6 +304,13 @@ function App() {
       return true; // storage blocked: show it, it just won't stay dismissed
     }
   });
+
+  // building a trip by hand from stop boards, shown in the panel over everything else. null = not building.
+  // { legs: [{ route, boardStop, alightStop, bus, arriveAvg }], step: 'ride' | 'summary' | 'transfer', ride: { route, boardStop, bus } }
+  //   ride:     picked a bus, now picking where to get off (RideView)
+  //   summary:  the trip so far, Start trip / Transfer (TripSummary)
+  //   transfer: the board of the last stop you get off at, to pick the next bus (StopBoard)
+  const [builder, setBuilder] = useState(null);
 
   // the routes menu, shown in the panel like the stop view (which opens on top of it). focusRouteId = the route whose stops it's listing
   const [routesOpen, setRoutesOpen] = useState(false);
@@ -628,16 +637,20 @@ function App() {
   // ---- routes menu: what the map shows outside a trip ----
   const idleRouteIds = useMemo(() => visibleRouteIds(runningRoutes, routePrefs), [runningRoutes, routePrefs]);
   const focusRoute = focusRouteId != null ? runningRoutes.find((route) => route.id === focusRouteId) : null;
-  // stop dots: the picked route's stops in its color, or with "show stops" on, every stop on a route the map is showing
+  // the one route the map singles out (everything else fades): the bus you're picking a stop on in the builder,
+  // otherwise the route picked in the routes menu
+  const builderRide = builder?.step === "ride" ? builder.ride : null;
+  const spotlightRoute = builderRide ? builderRide.route : routesOpen ? focusRoute : null;
+  // stop dots: that route's stops in its color, or with "show stops" on, every stop on a route the map is showing
   const stopDots = useMemo(() => {
-    if (focusRoute) {
-      const color = routeColor(focusRoute.color, darkMode);
-      return stopsOnRoutes([focusRoute], stops).map((stop) => ({ id: stop.id, lat: stop.lat, lon: stop.lon, color }));
+    if (spotlightRoute) {
+      const color = routeColor(spotlightRoute.color, darkMode);
+      return stopsOnRoutes([spotlightRoute], stops).map((stop) => ({ id: stop.id, lat: stop.lat, lon: stop.lon, color }));
     }
     if (!routePrefs.showStops) return [];
     return stopsOnRoutes(runningRoutes.filter((route) => idleRouteIds.has(route.id)), stops)
       .map((stop) => ({ id: stop.id, lat: stop.lat, lon: stop.lon, color: "var(--text-tertiary)" }));
-  }, [focusRoute, routePrefs.showStops, runningRoutes, idleRouteIds, stops, darkMode]);
+  }, [spotlightRoute, routePrefs.showStops, runningRoutes, idleRouteIds, stops, darkMode]);
 
   // ---- stop view (nearby list / stop board) ----
   const nearCenter = typeof stopView?.near === "object" ? stopView.near : null; // a real point, not locating/failed
@@ -647,18 +660,33 @@ function App() {
   );
   const boardStop = stopView?.stopId != null ? stops.find((stop) => stop.id === stopView.stopId) : null;
 
-  // what the map shows for it: the board's one stop, or the list's stops (hidden while searching by name)
-  const stopMarkers = boardStop
-    ? [{ id: boardStop.id, lat: boardStop.lat, lon: boardStop.lon, selected: true }]
-    : nearby && !stopView.query.trim()
-      ? nearby.stops.map((stop) => ({ id: stop.id, lat: stop.lat, lon: stop.lon, selected: false }))
-      : [];
-  const tappedSpot = stopView?.source === "map" && !boardStop ? nearCenter : null;
+  const ring = (stop) => ({ id: stop.id, lat: stop.lat, lon: stop.lon, selected: true });
+  // what the map marks. building a trip: where you board (picking a stop to get off), the stop you're transferring at,
+  // or every board and get-off stop so far (summary). otherwise the board's one stop, or the list's stops (not while searching)
+  let stopMarkers;
+  if (builder) {
+    const lastLeg = builder.legs[builder.legs.length - 1];
+    stopMarkers =
+      builder.step === "ride" ? [ring(builder.ride.boardStop)]
+      : builder.step === "transfer" ? [ring(lastLeg.alightStop)]
+      : builder.legs.flatMap((leg) => [ring(leg.boardStop), ring(leg.alightStop)]);
+  } else {
+    stopMarkers = boardStop
+      ? [ring(boardStop)]
+      : nearby && !stopView.query.trim()
+        ? nearby.stops.map((stop) => ({ id: stop.id, lat: stop.lat, lon: stop.lon, selected: false }))
+        : [];
+  }
+  const tappedSpot = stopView?.source === "map" && !boardStop && !builder ? nearCenter : null;
   // where the map moves to: the stop view's stops (and the tapped spot), otherwise the route picked in the routes menu.
   // it re-fits only when fitKey changes, i.e. something different to show, never on a poll
   let fitPoints = [];
   let fitKey = null;
-  if (stopMarkers.length > 0) {
+  if (builderRide) {
+    // the whole route, so you can see where it goes before picking a stop
+    fitPoints = stopsOnRoutes([builderRide.route], stops).map((stop) => [stop.lat, stop.lon]);
+    fitKey = `ride-${builderRide.route.id}-${builderRide.boardStop.id}`;
+  } else if (stopMarkers.length > 0) {
     fitPoints = [...stopMarkers, ...(tappedSpot ? [tappedSpot] : [])].map((point) => [point.lat, point.lon]);
     fitKey = stopMarkers.map((stop) => stop.id).join(",") + (tappedSpot ? `@${tappedSpot.lat},${tappedSpot.lon}` : "");
   } else if (focusRoute) {
@@ -697,9 +725,45 @@ function App() {
     setFocusRouteId(null);
   }
 
+  // ---- trip builder ----
+  // tapped a bus on a stop board (the first one, or a transfer's): pick where to get off next
+  function startRide(route, bus, fromStop) {
+    setBuilder((b) => ({ legs: b?.legs ?? [], step: "ride", ride: { route, boardStop: fromStop, bus } }));
+  }
+
+  function pickAlight(alightStop, arriveAvg) {
+    setBuilder((b) => ({ legs: [...b.legs, { ...b.ride, alightStop, arriveAvg }], step: "summary", ride: null }));
+  }
+
+  // back always goes one step: ride -> the board it came from; summary -> un-pick the last get-off stop
+  function builderBack() {
+    setBuilder((b) => {
+      if (b.step === "ride") return b.legs.length === 0 ? null : { ...b, step: "summary", ride: null }; // null = back to the stop board underneath
+      if (b.step === "transfer") return { ...b, step: "summary" };
+      const legs = b.legs.slice(0, -1);
+      const { route, boardStop, bus } = b.legs[b.legs.length - 1];
+      return { legs, step: "ride", ride: { route, boardStop, bus } };
+    });
+  }
+
+  // hand the legs to the normal trip view: same chips, I'm on board, transfers and two-tap cancel as a planned trip
+  function startBuiltTrip() {
+    setTripResult(builtTrip(builder.legs));
+    setCurrentLeg(0);
+    setBoardedBusId(null);
+    setBuilder(null);
+    setStopView(null);
+    closeRoutes();
+  }
+
 
   // the one-liner on the collapsed mobile bar
   function collapsedSummary() {
+    if (builder) {
+      if (builder.step === "ride") return `Ride the ${builder.ride.route.name}`;
+      if (builder.step === "transfer") return `Transfer at ${builder.legs[builder.legs.length - 1].alightStop.name}`;
+      return "Your trip";
+    }
     if (stopView) return boardStop ? boardStop.name : "Nearby stops";
     if (routesOpen) return focusRoute ? focusRoute.name : "Routes";
     const eta = relevantEtas[0]?.avg;
@@ -743,12 +807,12 @@ function App() {
           darkMode={darkMode}
           buses={buses}
           idleRouteIds={idleRouteIds} // the routes menu's choice (running routes by default)
-          focusRouteId={routesOpen ? focusRouteId : null}
+          focusRouteId={spotlightRoute?.id ?? null}
           stopDots={inBusTrip ? [] : stopDots}
           stopMarkers={stopMarkers}
           tappedSpot={tappedSpot}
-          onMapTap={inBusTrip ? null : handleMapTap}
-          onStopTap={inBusTrip ? null : pickStop}
+          onMapTap={inBusTrip || builder ? null : handleMapTap} // building a trip: finish or back out first
+          onStopTap={inBusTrip || builder ? null : pickStop}
           fitPoints={fitPoints}
           fitKey={fitKey}
           sheetRef={panelRef} // so the map can keep the stops clear of the sheet
@@ -832,7 +896,7 @@ function App() {
 
           {/* cancel X: left on mobile, far right on desktop. shown in every result state; the only way out of a trip.
               same button element in both looks (X, then the armed "Cancel trip" pill), so it doesn't remount between taps */}
-          {tripView !== null && !stopView && !routesOpen && ( // the stop view has its own back button; the X would clear the result underneath
+          {tripView !== null && !stopView && !routesOpen && !builder && ( // the stop view has its own back button; the X would clear the result underneath
             <button
               ref={cancelRef}
               type="button"
@@ -873,7 +937,46 @@ function App() {
         </div>
 
         <div className={styles.panelBody}>
-          {stopView &&
+          {/* the trip builder, over everything (the stop board it started from is underneath) */}
+          {builder?.step === "ride" && (
+            <RideView
+              key={`${builder.legs.length}-${builder.ride.route.id}-${builder.ride.boardStop.id}`}
+              ride={builder.ride}
+              stops={stops}
+              darkMode={darkMode}
+              legNumber={builder.legs.length + 1}
+              onPick={pickAlight}
+              onBack={builderBack}
+            />
+          )}
+          {builder?.step === "summary" && (
+            <TripSummary
+              legs={builder.legs}
+              darkMode={darkMode}
+              onStart={startBuiltTrip}
+              onTransfer={builder.legs.length < MAX_LEGS ? () => setBuilder((b) => ({ ...b, step: "transfer" })) : null}
+              onBack={builderBack}
+            />
+          )}
+          {builder?.step === "transfer" && (() => {
+            const lastLeg = builder.legs[builder.legs.length - 1];
+            return (
+              <StopBoard
+                key={`transfer-${lastLeg.alightStop.id}`}
+                stop={lastLeg.alightStop}
+                distance={null}
+                routes={runningRoutes}
+                darkMode={darkMode}
+                onBack={builderBack}
+                onRide={(route, bus) => startRide(route, bus, lastLeg.alightStop)}
+                notBefore={lastLeg.arriveAvg ?? 0} // buses that leave before you get here don't count
+                skipBusId={lastLeg.bus.bus_id} // the one you're arriving on
+                subtitle={lastLeg.arriveAvg != null ? `Transfer · you get here in ~${lastLeg.arriveAvg} min` : "Transfer"}
+              />
+            );
+          })()}
+
+          {stopView && !builder &&
             (boardStop ? (
               <StopBoard
                 key={boardStop.id} // fresh board (and skeleton) per stop
@@ -882,6 +985,7 @@ function App() {
                 routes={runningRoutes}
                 darkMode={darkMode}
                 onBack={stopViewBack}
+                onRide={(route, bus) => startRide(route, bus, boardStop)}
               />
             ) : (
               <NearbyList
@@ -897,7 +1001,7 @@ function App() {
             ))}
 
           {/* the routes menu, under the stop view (a board opened from it goes back to it) */}
-          {routesOpen && !stopView && (
+          {routesOpen && !stopView && !builder && (
             <RoutesView
               prefs={routePrefs}
               onPrefsChange={updateRoutePrefs}
@@ -914,7 +1018,7 @@ function App() {
           )}
 
           {/* the normal search / trip content. hidden, not unmounted, while the stop view is open, so the fields keep what you typed */}
-          <div className={stopView || routesOpen ? styles.hiddenView : styles.mainView}>
+          <div className={stopView || routesOpen || builder ? styles.hiddenView : styles.mainView}>
           {isTransfer && ( // calm, not alarming: tinted card, accent text, no icon
             <p className={styles.transferBanner}>
               Transfer: stay at <strong>{leg.boardStop.name}</strong> and board
@@ -923,7 +1027,7 @@ function App() {
           )}
 
           <div
-            className={`${styles.fields} ${tripView !== null ? styles.fieldsCompact : ""}`}
+            className={`${styles.fields} ${tripView !== null ? styles.fieldsCompact : ""} ${tripResult?.built ? styles.fieldsHidden : ""}`}
           >
             {inBusTrip && totalLegs > 1 && (
               <div className={styles.legLabel}>

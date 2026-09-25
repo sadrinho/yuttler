@@ -404,6 +404,12 @@
   gap: 8px;
 }
 
+/* a trip built from stop boards has no start/end search behind it, so the chips would show stale text.
+   hidden rather than unmounted, so what you'd typed is still there after the trip */
+.fieldsHidden > :not(.legLabel) {
+  display: none;
+}
+
 .legLabel {
   font-size: 12px;
   font-weight: 600;

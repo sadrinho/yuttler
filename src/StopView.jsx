@@ -1,52 +1,10 @@
-import { useState, useEffect } from 'react'
 import { searchStops, boardForStop, soonestArrival, walkMinutes } from './stops'
 import { routeColor } from './routeColor'
+import { useStopEtas } from './useStopEtas'
+import { catchableBus } from './tripBuilder'
 import styles from './StopView.module.css'
 import app from './App.module.css'
 import field from './Autocomplete.module.css'
-
-// arrival times for a few stops at once, one /eta call each (the feed only takes one stop per request; the proxy caches each for 15s).
-// returns { [stopId]: { etas, failed } }; a stop that isn't in there yet is still loading.
-// polls every 30s and on tab focus, like the trip view
-function useStopEtas(stopIds) {
-  const key = stopIds.join(',') // effect deps compare by value, not a new array every render
-  const [result, setResult] = useState({ key: null, byStop: {} })
-
-  useEffect(() => {
-    if (!key) return
-    const ids = key.split(',')
-    let stale = false // set on cleanup, so a slow answer for the old stops can't land after we've moved on
-
-    function save(id, answer) {
-      if (stale) return
-      setResult(prev => ({ key, byStop: { ...(prev.key === key ? prev.byStop : {}), [id]: answer } }))
-    }
-
-    function fetchAll() {
-      if (document.hidden) return // nobody's looking
-      for (const id of ids) {
-        fetch(`${import.meta.env.VITE_PROXY_URL}/eta/${id}`)
-          .then(r => r.json())
-          .then(data => save(id, { etas: data?.etas?.[id]?.etas || [], failed: Boolean(data?.error) })) // { error } when downtowner is down
-          .catch(err => {
-            console.error('Failed to load ETAs:', err)
-            save(id, { etas: [], failed: true })
-          })
-      }
-    }
-
-    fetchAll()
-    const intervalId = setInterval(fetchAll, 30000)
-    document.addEventListener('visibilitychange', fetchAll)
-    return () => {
-      stale = true
-      clearInterval(intervalId)
-      document.removeEventListener('visibilitychange', fetchAll)
-    }
-  }, [key])
-
-  return result.key === key ? result.byStop : {}
-}
 
 export function BackButton({ onClick }) {
   return (
@@ -189,13 +147,32 @@ function SkeletonRows({ count }) {
   )
 }
 
-// everything coming to one stop, grouped by route. distance is meters from the nearby point, or null if we came from search
-export function StopBoard({ stop, distance, routes, darkMode, onBack }) {
+// everything coming to one stop, grouped by route. distance is meters from the nearby point, or null if we came from search.
+// onRide(route, bus): tapping a route with a bus coming starts building a trip on its soonest bus (the trip builder).
+// notBefore: on a transfer, when you'll get here (minutes from now); buses that come sooner are gone by then, so they're left out.
+// skipBusId: on a transfer, the bus you're already on (it arrives here with you, it's not one to transfer to)
+export function StopBoard({ stop, distance, routes, darkMode, onBack, onRide, notBefore = 0, skipBusId = null, subtitle }) {
   const answer = useStopEtas([stop.id])[stop.id]
   const loading = !answer
   const failed = answer?.failed
-  const { arriving, others } = boardForStop(stop.id, failed ? [] : answer?.etas ?? [], routes)
+  const rawEtas = failed ? [] : (answer?.etas ?? []).filter(eta => eta.bus_id !== skipBusId)
+  const { arriving, others } = boardForStop(stop.id, rawEtas.filter(eta => eta.avg >= notBefore), routes)
+  const missed = new Set(rawEtas.filter(eta => eta.avg < notBefore).map(eta => eta.route)) // routes whose only buses leave before you arrive
   const colorOf = route => routeColor(route.color, darkMode)
+
+  // the route's name and times, the same whether the row is tappable or not
+  const arrivingRow = (route, etas) => (
+    <>
+      <Dot color={colorOf(route)} />
+      <span className={styles.routeName}>{route.name}</span>
+      <span className={styles.times}>
+        <span className={styles.next}>{etas[0].avg} min</span>
+        {etas.length > 1 && (
+          <span className={styles.later}>then {etas.slice(1, 3).map(eta => eta.avg).join(', ')} min</span>
+        )}
+      </span>
+    </>
+  )
 
   return (
     <div className={styles.view}>
@@ -203,7 +180,7 @@ export function StopBoard({ stop, distance, routes, darkMode, onBack }) {
         <BackButton onClick={onBack} />
         <div className={styles.headText}>
           <div className={styles.title}>{stop.name}</div>
-          <div className={styles.subtitle}>{distance == null ? 'Shuttle stop' : `${walkMinutes(distance)} min walk`}</div>
+          <div className={styles.subtitle}>{subtitle ?? (distance == null ? 'Shuttle stop' : `${walkMinutes(distance)} min walk`)}</div>
         </div>
       </div>
 
@@ -212,24 +189,27 @@ export function StopBoard({ stop, distance, routes, darkMode, onBack }) {
       ) : (
         <>
           {failed && <p className={styles.note}>Can't load arrival times right now.</p>}
-          {!failed && arriving.length === 0 && <p className={styles.note}>No buses heading here right now.</p>}
+          {!failed && arriving.length === 0 && (
+            <p className={styles.note}>{notBefore > 0 ? 'No buses heading here after you arrive.' : 'No buses heading here right now.'}</p>
+          )}
 
           {arriving.length > 0 && (
             <ul className={styles.list}>
               {arriving.map(({ route, etas }) => (
-                <li key={route.id} className={styles.routeRow}>
-                  <Dot color={colorOf(route)} />
-                  <span className={styles.routeName}>{route.name}</span>
-                  <span className={styles.times}>
-                    <span className={styles.next}>{etas[0].avg} min</span>
-                    {etas.length > 1 && (
-                      <span className={styles.later}>then {etas.slice(1, 3).map(eta => eta.avg).join(', ')} min</span>
-                    )}
-                  </span>
+                <li key={route.id}>
+                  {onRide ? (
+                    <button type="button" className={`${styles.routeRow} ${styles.rideRow}`} onClick={() => onRide(route, catchableBus(rawEtas, route.id, notBefore))}>
+                      {arrivingRow(route, etas)}
+                      <Chevron />
+                    </button>
+                  ) : (
+                    <div className={styles.routeRow}>{arrivingRow(route, etas)}</div>
+                  )}
                 </li>
               ))}
             </ul>
           )}
+          {onRide && arriving.length > 0 && <p className={styles.hintLine}>Tap a bus to ride it and pick where to get off</p>}
 
           {others.length > 0 && (
             <>
@@ -241,7 +221,11 @@ export function StopBoard({ stop, distance, routes, darkMode, onBack }) {
                   <li key={route.id} className={styles.routeRow}>
                     <Dot color={colorOf(route)} />
                     <span className={styles.routeName}>{route.name}</span>
-                    {!failed && <span className={styles.status}>{route.active ? 'Nothing coming' : 'Not running'}</span>}
+                    {!failed && (
+                      <span className={styles.status}>
+                        {!route.active ? 'Not running' : missed.has(route.id) ? 'Gone before you arrive' : 'Nothing coming'}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

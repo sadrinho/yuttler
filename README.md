@@ -18,6 +18,8 @@ Built by reverse-engineering the undocumented API behind Yale's Downtowner shutt
 
 **Stop boards and nearby stops.** See what's coming without planning a trip. **Nearby stops** (under Find route) lists the stops within about a 5 minute walk of your starting point, or of you if you haven't picked one, each with its soonest bus; a search box finds any stop by name. Tapping anywhere on the map does the same around that spot (a one-time tip says so), with no stop pins cluttering the map: only the stops in the list get small rings, and the map moves to show them above the sheet. Pick a stop (in the list or its ring) for its board: every route that stops there, soonest bus first, with the next 2–3 arrival times, and underneath, the routes that stop there but have nothing coming ("Not running" or "Nothing coming"), so nothing about the stop is hidden. If nothing is within 400m, the list says so and shows the 3 closest stops anyway. The stop view is off during a bus trip (Cancel stays the only way out); the helpers are in `src/stops.js`, the views in `src/StopView.jsx`.
 
+**Build a trip by hand.** When you'd rather choose than let the planner decide, start from any stop board: tap a route with a bus coming to ride its soonest bus, and the panel lists that route's remaining stops (once around the loop) with when that bus should reach each one. Pick where to get off and you get a summary of the trip so far, with **Start trip** or **Transfer at …**, which opens that stop's board showing only the buses you can still catch once you're there (not your own bus, and nothing that leaves before you arrive). Up to 2 transfers. Start trip hands the legs to the normal trip view, so boarding, transfers and cancelling work exactly like a planned trip. Back always goes one step. Helpers are in `src/tripBuilder.js`, the views in `src/TripBuilderView.jsx`. Times come from the same `/eta` feed (one call per stop, for up to 20 stops along the route); the feed only gives each bus's *next* visit to a stop, so a stop the bus passes before reaching you has no time rather than a wrong one.
+
 **Routes menu.** The **Routes** button (next to Nearby stops) lists the routes running now, with how many buses are on each, or every route with **All routes**. Each has a switch for whether the map draws it, and **Show stops on the map** adds a small dot for every stop on the routes that are shown (hidden when zoomed far out, and tapping a dot opens that stop's board). Tapping a route fades everything else on the map, fits the map to it, and lists its stops in order as a strip map; tapping a stop opens its board. These choices are remembered between visits (localStorage `routePrefs`) and only apply outside a trip: during one, the map always shows the trip's own routes. Helpers are in `src/routeList.js`, the view in `src/RoutesView.jsx`.
 
 **Turn-by-turn ride guidance.** The panel shows only what you need to do right now: walk to a stop, board a named bus (with the next arrival as a big live countdown and the two after it underneath), ride until your alight stop, transfer, repeat. "I'm on board" and "I'm off" advance the trip once your bus is 4 or fewer stops away, and "Done" ends it on the final leg. Cancelling takes two taps (the X turns into a red "Cancel trip" button), so a stray tap can't lose your trip.
@@ -190,9 +192,10 @@ The production proxy needs `LOCATIONIQ_KEY`, `ALLOWED_ORIGIN` (including the pro
 node planTrip.test.mjs
 node stops.test.mjs
 node routeList.test.mjs
+node tripBuilder.test.mjs
 ```
 
-`stops.test.mjs` covers picking nearby stops (running routes only, at most 5 within 400m, the 3-closest fallback, the nothing-running case), stop search, and grouping a stop's arrivals by route. `routeList.test.mjs` covers the routes menu: reading saved settings, which routes it lists and the map draws, and a route's stops in order.
+`stops.test.mjs` covers picking nearby stops (running routes only, at most 5 within 400m, the 3-closest fallback, the nothing-running case), stop search, and grouping a stop's arrivals by route. `routeList.test.mjs` covers the routes menu: reading saved settings, which routes it lists and the map draws, and a route's stops in order. `tripBuilder.test.mjs` covers the trip builder: the stops after where you board (around the loop, out-and-back repeats), your bus's time at each, which bus you can catch on a transfer, and the finished trip's shape.
 
 It covers the zero-length path case: when the same stop is the nearest to both ends, `planTrip` must return "No route found" rather than `success: true` with no legs, and a real path must still win when zero-length candidates exist alongside it.
 
@@ -217,7 +220,9 @@ It covers the zero-length path case: when the same stop is the nearest to both e
 
 **Stop boards and nearby stops.** ✅ Done (9/24) — see [Features](#features).
 
-**Routes menu.** ✅ Done (9/24) — toggle routes and stops on the map, and browse any route's stops. Next up: a trip builder that starts from a stop board.
+**Routes menu.** ✅ Done (9/24) — toggle routes and stops on the map, and browse any route's stops.
+
+**Trip builder.** ✅ Done (9/24) — build a trip leg by leg from stop boards, with live times. Next up: the planner showing its top 2–3 options, each editable in the builder.
 
 **Proxy caching.** ✅ Done — see [Caching and failure handling](#caching-and-failure-handling).
 
