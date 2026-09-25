@@ -47,6 +47,25 @@
   box-shadow: var(--shadow-stop);
 }
 
+/* stop dots ("show stops", or the route picked in the routes menu): a 10px ring centered in a 32px tap area */
+.dotHit {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--marker-outline);
+  border: 2.5px solid var(--c);
+  box-shadow: var(--shadow-stop);
+}
+
 /* where you tapped the map for nearby stops */
 .spot {
   width: 12px;

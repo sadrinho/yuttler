@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet' // for L.divIcon. every marker is plain html now (styled in Map.module.css), no more png pins
 import { routeColor } from './routeColor'
@@ -34,6 +34,15 @@ function makeStopIcon(color) { // white dot with a ring in the route color (boar
     iconSize: [22, 22], // 14px + 4px ring each side
     iconAnchor: [11, 11],
     popupAnchor: [0, -12],
+  }))
+}
+
+function makeDotIcon(color) { // a stop dot from "show stops" (or the route you picked): small ring, big invisible tap area
+  return cachedIcon(`dot|${color}`, () => L.divIcon({
+    className: styles.markerReset,
+    html: `<div class="${styles.dotHit}"><div class="${styles.dot}" style="--c: ${color}"></div></div>`,
+    iconSize: [32, 32], // the tap area; the dot itself is 10px
+    iconAnchor: [16, 16],
   }))
 }
 
@@ -91,6 +100,26 @@ function TapHandler({ onTap }) {
   return null
 }
 
+const DOTS_MIN_ZOOM = 14 // zoomed out further than this, stop dots would just be a smear
+
+// stop dots. hidden below DOTS_MIN_ZOOM unless anyZoom (one route's ~15 stops never smear); below the buses (so a bus is never hidden by a stop), above the route lines
+function StopDots({ dots, anyZoom, onStopTap }) {
+  const map = useMap()
+  const [zoom, setZoom] = useState(() => map.getZoom())
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
+  if (zoom < DOTS_MIN_ZOOM && !anyZoom) return null
+  return dots.map(dot => (
+    <Marker
+      key={`dot-${dot.id}`}
+      position={[dot.lat, dot.lon]}
+      icon={makeDotIcon(dot.color)}
+      zIndexOffset={-5000}
+      eventHandlers={{ click: () => onStopTap?.(dot.id) }}
+      keyboard={false} // ~140 of them: too many tab stops. the routes menu lists every stop anyway
+    />
+  ))
+}
+
 // moves the map to show `points` whenever fitKey changes (not on every bus poll), clear of the mobile sheet (sheetRef).
 // the sheet often changes height right after (arrival times load in, rows get added), so it re-fits when it resizes,
 // but only until you touch the map yourself: after that, the map is yours
@@ -135,9 +164,12 @@ function FitView({ points, fitKey, sheetRef }) {
     // {success: false, message: ...} = search failed
     // {success: true, walkOnly: true, ...} = close enough to walk
     // {success: true, legs, startCoords, endCoords} = a valid trip
+// idleRouteIds: which routes to draw outside a trip (the routes menu's choice). focusRouteId: the route picked in the menu,
+// drawn on top with everything else faded. stopDots: stops to mark with a small dot, as { id, lat, lon, color }
 // stopMarkers: stops the stop view is showing, as { id, lat, lon, selected }. tapping one calls onStopTap(id)
+// fitPoints/fitKey: [lat, lon]s to move the map to, whenever fitKey changes (see FitView)
 // tappedSpot: where you tapped for nearby stops, or null. onMapTap: null while a tap shouldn't do anything (during a bus trip)
-function Map( { tripResult, routes, darkMode, buses, stopMarkers = [], tappedSpot, onMapTap, onStopTap, fitKey, sheetRef }) {
+function Map( { tripResult, routes, darkMode, buses, idleRouteIds, focusRouteId = null, stopDots = [], stopMarkers = [], tappedSpot, onMapTap, onStopTap, fitPoints = [], fitKey, sheetRef }) {
 
   // we use a Set because lookup is o(1), we don't have any duplicates, and it makes sense to key our routes by insertion order
   const tripRouteIds = new Set(tripResult?.legs?.map(leg => leg.route.id)) 
@@ -146,11 +178,18 @@ function Map( { tripResult, routes, darkMode, buses, stopMarkers = [], tappedSpo
 
   const walkOnly = Boolean(tripResult?.walkOnly) // walking: just the two pins, no routes or buses
 
-  // if our tripResult and legs are valid, we store only those routes. else, only the routes running right now
+  const inTrip = tripRouteIds.size > 0
+  // outside a trip: the routes picked in the routes menu (running ones by default), plus the one you're looking at even if it's
+  // switched off. in a trip: only its routes, whatever the menu says
+  const showIdle = route => (idleRouteIds ? idleRouteIds.has(route.id) : route.active) || route.id === focusRouteId
+  const focusing = !inTrip && focusRouteId != null
+
+  // if our tripResult and legs are valid, we store only those routes. else, the ones picked above
   const routesToDraw = walkOnly ? []
-    : tripRouteIds.size > 0
+    : inTrip
     ? routes.filter(route => tripRouteIds.has(route.id)) // filters for ids in route matching our tripRouteIds
-    : routes.filter(route => route.active) // before a search: skip routes that aren't running
+    : routes.filter(showIdle)
+        .sort((a, b) => (a.id === focusRouteId) - (b.id === focusRouteId)) // the focused route last, so it's drawn on top
 
   const routesById = {} // object mapping route id to route for instant lookup when drawing buses
   for (const route of routes) {
@@ -159,9 +198,10 @@ function Map( { tripResult, routes, darkMode, buses, stopMarkers = [], tappedSpo
 
   // same logic as above, but for storing all the bus objects that we have to draw
   const busesToDraw = walkOnly ? []
-    : tripRouteIds.size > 0
+    : inTrip
     ? buses.filter(bus => tripRouteIds.has(bus.route))
-    : buses.filter(bus => routesById[bus.route]?.active)
+    : buses.filter(bus => routesById[bus.route] && showIdle(routesById[bus.route]))
+  const faded = routeId => focusing && routeId !== focusRouteId // everything but the focused route
 
   const legs = tripResult?.success ? tripResult.legs ?? [] : [] // walkOnly has no legs
   const colorOf = (route) => routeColor(route?.color, darkMode) // api color in light, lightened in dark (see routeColor.js)
@@ -188,8 +228,8 @@ function Map( { tripResult, routes, darkMode, buses, stopMarkers = [], tappedSpo
             key={`casing-${route.id}`} // again, dynamically allocated; needs keys to track between renders
             positions={pairUp(route.path)} 
             pathOptions={darkMode
-              ? { color: '#0B0D11', opacity: 0.7, weight: 9 }
-              : { color: '#FFFFFF', opacity: 0.85, weight: 9 }}
+              ? { color: '#0B0D11', opacity: faded(route.id) ? 0 : 0.7, weight: 9 }
+              : { color: '#FFFFFF', opacity: faded(route.id) ? 0 : 0.85, weight: 9 }}
             interactive={false} // lines never eat taps meant for the map
           />
         ))}
@@ -197,7 +237,7 @@ function Map( { tripResult, routes, darkMode, buses, stopMarkers = [], tappedSpo
           <Polyline
             key={route.id}
             positions={pairUp(route.path)} 
-            pathOptions={{ color: colorOf(route), opacity: 1, weight: 5 }} // learned an important lesson after debugging: ' is not the same as ` 
+            pathOptions={{ color: colorOf(route), opacity: faded(route.id) ? 0.22 : 1, weight: 5 }} // learned an important lesson after debugging: ' is not the same as ` 
             interactive={false}
           />
         ))}
@@ -211,6 +251,7 @@ function Map( { tripResult, routes, darkMode, buses, stopMarkers = [], tappedSpo
             key={bus.id}
             position={[bus.lat, bus.lon]}
             icon={makeBusIcon(bus.heading, color)}
+            opacity={faded(bus.route) ? 0.35 : 1}
           >
             <Popup className={styles.popup} closeButton={false}> {/* no close button: tapping the map dismisses it */}
               <div className={styles.busPopup}>
@@ -247,6 +288,8 @@ function Map( { tripResult, routes, darkMode, buses, stopMarkers = [], tappedSpo
           </Marker>
         )}
 
+        {!inTrip && !walkOnly && <StopDots dots={stopDots} anyZoom={focusing} onStopTap={onStopTap} />}
+
         {/* stop view: the nearby stops (neutral rings) or the one stop whose board is open (accent ring). tap one for its board */}
         {stopMarkers.map(stop => (
           <Marker
@@ -263,7 +306,7 @@ function Map( { tripResult, routes, darkMode, buses, stopMarkers = [], tappedSpo
 
         {onMapTap && <TapHandler onTap={onMapTap} />}
         <FitView
-          points={[...stopMarkers.map(stop => [stop.lat, stop.lon]), ...(tappedSpot ? [[tappedSpot.lat, tappedSpot.lon]] : [])]}
+          points={fitPoints}
           fitKey={fitKey}
           sheetRef={sheetRef}
         />

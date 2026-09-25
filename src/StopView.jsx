@@ -48,7 +48,7 @@ function useStopEtas(stopIds) {
   return result.key === key ? result.byStop : {}
 }
 
-function BackButton({ onClick }) {
+export function BackButton({ onClick }) {
   return (
     <button type="button" className={app.iconButton} aria-label="Back" onClick={onClick}>
       <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
@@ -58,7 +58,7 @@ function BackButton({ onClick }) {
   )
 }
 
-function Chevron() {
+export function Chevron() {
   return (
     <svg className={styles.chevron} viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
       <polyline points="9,5 16,12 9,19" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -66,7 +66,7 @@ function Chevron() {
   )
 }
 
-function Dot({ color }) {
+export function Dot({ color }) {
   return <span className={styles.dot} style={{ background: color }} aria-hidden="true" />
 }
 

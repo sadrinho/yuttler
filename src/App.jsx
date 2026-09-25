@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { planTrip, markRunningRoutes, getDistance } from "./tripPlanner";
 import { nearbyStops } from "./stops";
 import { NearbyList, StopBoard } from "./StopView";
+import { RoutesView } from "./RoutesView";
+import { readPrefs, visibleRouteIds, stopsOnRoutes } from "./routeList";
 import Autocomplete from "./Autocomplete";
 import Map, { ATTRIBUTION } from "./Map";
 import styles from "./App.module.css";
@@ -300,6 +302,26 @@ function App() {
       return true; // storage blocked: show it, it just won't stay dismissed
     }
   });
+
+  // the routes menu, shown in the panel like the stop view (which opens on top of it). focusRouteId = the route whose stops it's listing
+  const [routesOpen, setRoutesOpen] = useState(false);
+  const [focusRouteId, setFocusRouteId] = useState(null);
+  // which routes / stops the map shows outside a trip: { showAll, hidden, showStops }, remembered between visits
+  const [routePrefs, setRoutePrefs] = useState(() => {
+    try {
+      return readPrefs(localStorage.getItem("routePrefs"));
+    } catch {
+      return readPrefs(null); // storage blocked: defaults
+    }
+  });
+  function updateRoutePrefs(next) {
+    setRoutePrefs(next);
+    try {
+      localStorage.setItem("routePrefs", JSON.stringify(next));
+    } catch {
+      // storage blocked, the choice just won't persist
+    }
+  }
 
   const [menuOpen, setMenuOpen] = useState(false); // hamburger menu
   const menuOpener = useRef(null); // whichever hamburger opened it, so focus can go back there on close
@@ -603,6 +625,20 @@ function App() {
   const isTransfer = inBusTrip && !boardedBusId && currentLeg > 0; // off one bus, waiting for the next at the same stop
   const legColor = leg ? routeColor(leg.route.color, darkMode) : null; // same color the map uses for this route
 
+  // ---- routes menu: what the map shows outside a trip ----
+  const idleRouteIds = useMemo(() => visibleRouteIds(runningRoutes, routePrefs), [runningRoutes, routePrefs]);
+  const focusRoute = focusRouteId != null ? runningRoutes.find((route) => route.id === focusRouteId) : null;
+  // stop dots: the picked route's stops in its color, or with "show stops" on, every stop on a route the map is showing
+  const stopDots = useMemo(() => {
+    if (focusRoute) {
+      const color = routeColor(focusRoute.color, darkMode);
+      return stopsOnRoutes([focusRoute], stops).map((stop) => ({ id: stop.id, lat: stop.lat, lon: stop.lon, color }));
+    }
+    if (!routePrefs.showStops) return [];
+    return stopsOnRoutes(runningRoutes.filter((route) => idleRouteIds.has(route.id)), stops)
+      .map((stop) => ({ id: stop.id, lat: stop.lat, lon: stop.lon, color: "var(--text-tertiary)" }));
+  }, [focusRoute, routePrefs.showStops, runningRoutes, idleRouteIds, stops, darkMode]);
+
   // ---- stop view (nearby list / stop board) ----
   const nearCenter = typeof stopView?.near === "object" ? stopView.near : null; // a real point, not locating/failed
   const nearby = useMemo(
@@ -618,8 +654,17 @@ function App() {
       ? nearby.stops.map((stop) => ({ id: stop.id, lat: stop.lat, lon: stop.lon, selected: false }))
       : [];
   const tappedSpot = stopView?.source === "map" && !boardStop ? nearCenter : null;
-  // the map re-fits only when this changes, i.e. a different stop or set of stops, never on a poll
-  const fitKey = stopMarkers.length > 0 ? stopMarkers.map((stop) => stop.id).join(",") + (tappedSpot ? `@${tappedSpot.lat},${tappedSpot.lon}` : "") : null;
+  // where the map moves to: the stop view's stops (and the tapped spot), otherwise the route picked in the routes menu.
+  // it re-fits only when fitKey changes, i.e. something different to show, never on a poll
+  let fitPoints = [];
+  let fitKey = null;
+  if (stopMarkers.length > 0) {
+    fitPoints = [...stopMarkers, ...(tappedSpot ? [tappedSpot] : [])].map((point) => [point.lat, point.lon]);
+    fitKey = stopMarkers.map((stop) => stop.id).join(",") + (tappedSpot ? `@${tappedSpot.lat},${tappedSpot.lon}` : "");
+  } else if (focusRoute) {
+    fitPoints = stopsOnRoutes([focusRoute], stops).map((stop) => [stop.lat, stop.lon]);
+    fitKey = `route-${focusRoute.id}`;
+  }
 
   // tapping the map: nearby stops around that spot. not during a bus trip, where Cancel is the only way out
   function handleMapTap(point) {
@@ -634,14 +679,29 @@ function App() {
     }
   }
 
+  // opens a stop's board. from the nearby list, back returns to it; from anywhere else (a stop dot, the routes menu) there's
+  // no list behind it, so back closes the board
   function pickStop(stopId) {
     document.activeElement?.blur(); // the stop search field, if that's where it came from
-    setStopView((v) => ({ ...v, stopId }));
+    setStopView((v) => (v ? { ...v, stopId } : { source: null, near: null, stopId, query: "" }));
+    setPanelExpanded(true); // a stop dot tapped with the sheet hidden
   }
+
+  function openRoutes() {
+    document.activeElement?.blur();
+    setRoutesOpen(true);
+  }
+
+  function closeRoutes() {
+    setRoutesOpen(false);
+    setFocusRouteId(null);
+  }
+
 
   // the one-liner on the collapsed mobile bar
   function collapsedSummary() {
     if (stopView) return boardStop ? boardStop.name : "Nearby stops";
+    if (routesOpen) return focusRoute ? focusRoute.name : "Routes";
     const eta = relevantEtas[0]?.avg;
     switch (tripView) {
       case null:
@@ -682,10 +742,14 @@ function App() {
           routes={runningRoutes} // same "running" as the planner, so the map shows the routes that actually have buses
           darkMode={darkMode}
           buses={buses}
+          idleRouteIds={idleRouteIds} // the routes menu's choice (running routes by default)
+          focusRouteId={routesOpen ? focusRouteId : null}
+          stopDots={inBusTrip ? [] : stopDots}
           stopMarkers={stopMarkers}
           tappedSpot={tappedSpot}
           onMapTap={inBusTrip ? null : handleMapTap}
-          onStopTap={pickStop}
+          onStopTap={inBusTrip ? null : pickStop}
+          fitPoints={fitPoints}
           fitKey={fitKey}
           sheetRef={panelRef} // so the map can keep the stops clear of the sheet
         />
@@ -768,7 +832,7 @@ function App() {
 
           {/* cancel X: left on mobile, far right on desktop. shown in every result state; the only way out of a trip.
               same button element in both looks (X, then the armed "Cancel trip" pill), so it doesn't remount between taps */}
-          {tripView !== null && !stopView && ( // the stop view has its own back button; the X would clear the result underneath
+          {tripView !== null && !stopView && !routesOpen && ( // the stop view has its own back button; the X would clear the result underneath
             <button
               ref={cancelRef}
               type="button"
@@ -832,8 +896,25 @@ function App() {
               />
             ))}
 
+          {/* the routes menu, under the stop view (a board opened from it goes back to it) */}
+          {routesOpen && !stopView && (
+            <RoutesView
+              prefs={routePrefs}
+              onPrefsChange={updateRoutePrefs}
+              routes={runningRoutes}
+              buses={buses}
+              busesLoaded={busesLoaded}
+              stops={stops}
+              darkMode={darkMode}
+              focusRouteId={focusRouteId}
+              onFocus={setFocusRouteId}
+              onPickStop={pickStop}
+              onBack={closeRoutes}
+            />
+          )}
+
           {/* the normal search / trip content. hidden, not unmounted, while the stop view is open, so the fields keep what you typed */}
-          <div className={stopView ? styles.hiddenView : styles.mainView}>
+          <div className={stopView || routesOpen ? styles.hiddenView : styles.mainView}>
           {isTransfer && ( // calm, not alarming: tinted card, accent text, no icon
             <p className={styles.transferBanner}>
               Transfer: stay at <strong>{leg.boardStop.name}</strong> and board
@@ -887,9 +968,14 @@ function App() {
                     ? "Loading routes…"
                     : "Enter a start and end location above"}
               </p>
-              <button type="button" className={styles.secondaryButton} disabled={loading} onClick={openNearbyFromButton}>
-                Nearby stops
-              </button>
+              <div className={styles.secondaryRow}>
+                <button type="button" className={styles.secondaryButton} disabled={loading} onClick={openNearbyFromButton}>
+                  Nearby stops
+                </button>
+                <button type="button" className={styles.secondaryButton} disabled={loading} onClick={openRoutes}>
+                  Routes
+                </button>
+              </div>
               {showTapHint && (
                 <p className={styles.hint}>
                   Tip: <span className={styles.mobileOnly}>tap</span>

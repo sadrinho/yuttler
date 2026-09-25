@@ -18,6 +18,8 @@ Built by reverse-engineering the undocumented API behind Yale's Downtowner shutt
 
 **Stop boards and nearby stops.** See what's coming without planning a trip. **Nearby stops** (under Find route) lists the stops within about a 5 minute walk of your starting point, or of you if you haven't picked one, each with its soonest bus; a search box finds any stop by name. Tapping anywhere on the map does the same around that spot (a one-time tip says so), with no stop pins cluttering the map: only the stops in the list get small rings, and the map moves to show them above the sheet. Pick a stop (in the list or its ring) for its board: every route that stops there, soonest bus first, with the next 2–3 arrival times, and underneath, the routes that stop there but have nothing coming ("Not running" or "Nothing coming"), so nothing about the stop is hidden. If nothing is within 400m, the list says so and shows the 3 closest stops anyway. The stop view is off during a bus trip (Cancel stays the only way out); the helpers are in `src/stops.js`, the views in `src/StopView.jsx`.
 
+**Routes menu.** The **Routes** button (next to Nearby stops) lists the routes running now, with how many buses are on each, or every route with **All routes**. Each has a switch for whether the map draws it, and **Show stops on the map** adds a small dot for every stop on the routes that are shown (hidden when zoomed far out, and tapping a dot opens that stop's board). Tapping a route fades everything else on the map, fits the map to it, and lists its stops in order as a strip map; tapping a stop opens its board. These choices are remembered between visits (localStorage `routePrefs`) and only apply outside a trip: during one, the map always shows the trip's own routes. Helpers are in `src/routeList.js`, the view in `src/RoutesView.jsx`.
+
 **Turn-by-turn ride guidance.** The panel shows only what you need to do right now: walk to a stop, board a named bus (with the next arrival as a big live countdown and the two after it underneath), ride until your alight stop, transfer, repeat. "I'm on board" and "I'm off" advance the trip once your bus is 4 or fewer stops away, and "Done" ends it on the final leg. Cancelling takes two taps (the X turns into a red "Cancel trip" button), so a stray tap can't lose your trip.
 
 **Autocomplete search.** Campus landmarks resolve instantly from a curated table with aliases (`akw`, `som`, `div school`). Anything else is geocoded through LocationIQ, bounded roughly to the New Haven area, with results cached on the proxy for 24 hours. A Nominatim fallback exists but is off by default (see below).
@@ -187,9 +189,10 @@ The production proxy needs `LOCATIONIQ_KEY`, `ALLOWED_ORIGIN` (including the pro
 ```
 node planTrip.test.mjs
 node stops.test.mjs
+node routeList.test.mjs
 ```
 
-`stops.test.mjs` covers picking nearby stops (running routes only, at most 5 within 400m, the 3-closest fallback, the nothing-running case), stop search, and grouping a stop's arrivals by route.
+`stops.test.mjs` covers picking nearby stops (running routes only, at most 5 within 400m, the 3-closest fallback, the nothing-running case), stop search, and grouping a stop's arrivals by route. `routeList.test.mjs` covers the routes menu: reading saved settings, which routes it lists and the map draws, and a route's stops in order.
 
 It covers the zero-length path case: when the same stop is the nearest to both ends, `planTrip` must return "No route found" rather than `success: true` with no legs, and a real path must still win when zero-length candidates exist alongside it.
 
@@ -212,13 +215,15 @@ It covers the zero-length path case: when the same stop is the nearest to both e
 
 **Visual and UX overhaul.** ✅ Done (9/23) — fullscreen map with a mobile bottom sheet and desktop side pane, light/dark themes, and real error and empty states (no route, no buses, arrival times unavailable, server unreachable).
 
-**Stop boards and nearby stops.** ✅ Done (9/24) — see [Features](#features). Next up: a routes menu (toggle routes and stops on the map), then a trip builder that starts from a stop board.
+**Stop boards and nearby stops.** ✅ Done (9/24) — see [Features](#features).
+
+**Routes menu.** ✅ Done (9/24) — toggle routes and stops on the map, and browse any route's stops. Next up: a trip builder that starts from a stop board.
 
 **Proxy caching.** ✅ Done — see [Caching and failure handling](#caching-and-failure-handling).
 
 ### If time allows
 
-**The user's live location on the map**, and **toggling which routes are shown** (or isolating a single route). Both were cut from the V4 redesign to keep it focused.
+**The user's live location on the map.** Cut from the V4 redesign to keep it focused. (Toggling and isolating routes has since shipped in the routes menu.)
 
 **Adjustable pins.** Let users drag their start/end pins when the geocoded location is inaccurate.
 

@@ -334,6 +334,17 @@
   cursor: default;
 }
 
+/* Nearby stops + Routes, side by side */
+.secondaryRow {
+  display: flex;
+  gap: 10px;
+}
+
+.secondaryRow .secondaryButton {
+  flex: 1;
+  width: auto;
+}
+
 /* the search / trip content: display: contents so wrapping it changes nothing about the layout.
    hidden (not unmounted) while the stop view is open, so the fields keep what you typed */
 .mainView {
