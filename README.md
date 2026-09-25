@@ -1,10 +1,10 @@
 # yuttler
 
-A Google Maps style trip planner for the Yale Shuttle transit system. Enter where you are and where you're going, and it tells you which stop to walk to, which bus to board, where to transfer, and where to get off, with live bus positions, real-time arrival estimates, and the route drawn on an interactive map.
+A Google Maps style trip planner for the Yale Shuttle transit system. Enter where you are and where you're going, and it tells you which stop to walk to, which bus to board, where to transfer, and where to get off, with live bus positions, real-time arrival estimates, and the route drawn on an interactive map. You can also skip the planner: see what's coming to any stop, browse and toggle routes, and build a trip yourself leg by leg.
 
 Built by reverse-engineering the undocumented API behind Yale's Downtowner shuttle web app, because no public API or documentation exists (as of 9/10/26).
 
-**The V4 redesign shipped on 9/23: fullscreen map, mobile bottom sheet / desktop side pane, light and dark themes.** The website is live at the link below!
+**The V4 redesign shipped on 9/23: fullscreen map, mobile bottom sheet / desktop side pane, light and dark themes. On 9/24 it gained stop boards, a routes menu, and a trip builder, so the planner is no longer a black box.** The website is live at the link below!
 
 [Visit Yuttler](https://www.yuttler.com)
 
@@ -26,7 +26,7 @@ Built by reverse-engineering the undocumented API behind Yale's Downtowner shutt
 
 **Autocomplete search.** Campus landmarks resolve instantly from a curated table with aliases (`akw`, `som`, `div school`). Anything else is geocoded through LocationIQ, bounded roughly to the New Haven area, with results cached on the proxy for 24 hours. A Nominatim fallback exists but is off by default (see below).
 
-**Interactive map** (Leaflet + OpenStreetMap data, CARTO tiles). Before a search it shows only the routes running right now (ones with a bus on them) and their buses; after a search it narrows to just the routes your trip uses, with markers for your start, each boarding stop, each transfer, where to get off, and your destination. Tap a bus or stop for a label. Walk-only trips show just the two pins.
+**Interactive map** (Leaflet + OpenStreetMap data, CARTO tiles). Before a search it shows the routes running right now (ones with a bus on them) and their buses, or whatever you've picked in the routes menu; after a search it narrows to just the routes your trip uses, with markers for your start, each boarding stop, each transfer, where to get off, and your destination. Tap a bus or trip stop for a label. Outside a trip, tap anywhere for nearby stops, or tap a stop ring or dot for its board. Walk-only trips show just the two pins.
 
 **Designed for phones first.** On mobile the map fills the screen under a bottom sheet you can hide down to a one-line summary ("Board Blue West in 4 min"); on desktop the same content sits in a 400px side pane. Light and dark themes are a manual toggle in the hamburger menu (it never follows the OS setting) and are remembered between visits; route colors are lightened in dark mode so they stay readable on the dark map. The menu also has a feedback link, credits, and a "Loaded … stops, routes, buses" line. Motion is kept to slides and fades, and everything turns instant if your device has Reduce Motion on.
 
@@ -206,10 +206,12 @@ It covers the zero-length path case: when the same stop is the nearest to both e
 - **Proximity thresholds are guesses.** The `stopsRemaining <= 4` gate on both the board and alight buttons was never calibrated against real values.
 - **No ETA validation.** Routes with no bus on them are skipped, but a route with a bus can still have none heading to your stop soon (e.g. a single bus that just went past), or only a very late one. The planner doesn't use ETAs to check that a structurally valid route is actually rideable.
 - **Stop counter on out-and-back routes.** Green and Purple - West Campus visit some stops twice (in and back out among the Buildings). The "N stops away" counter uses the first occurrence of each stop in the route's list, so on those two routes it can badly overcount and keep "I'm on board" / "I'm off" disabled while the bus is actually close.
+- **Trip builder times are partial.** Your bus's time is only fetched for the first 20 stops after where you board (one `/eta` call per stop), and the feed only gives each bus's *next* visit to a stop, so a stop the bus passes before reaching you shows no time. It also always rides the soonest catchable bus; you can't pick a later one.
+- **Trip builder on out-and-back routes.** Like the stop counter, it starts from a stop's first listing on Green and Purple - West Campus, so the stops it lists after a repeated stop can be off.
 - **No route segment trimming.** The map draws each leg's entire loop rather than just the segment you ride.
 - **Autocomplete race condition.** A stale geocoder response can append to the suggestion list after it's no longer relevant.
 - **No automatic retry for stops/routes.** They're fetched once on load; if that fails, the error screen's Retry button reloads the page. While they load, the search shows "Loading routes…" and Find route waits.
-- **ETA cache is uncapped.** The proxy keeps one entry per distinct stop ID requested. Only a concern under abuse; there's no per-IP rate limiting yet.
+- **ETA cache is uncapped.** The proxy keeps one entry per distinct stop ID requested. Only a concern under abuse; there's no per-IP rate limiting yet. The stop views poll more stops than the trip view did (up to 5 for nearby stops, up to 20 in the trip builder, every 30s), but the 15s per-stop cache means users looking at the same stops share one upstream call.
 - **Existing lint errors.** ESLint flags two synchronous `setState` calls inside effects (`App.jsx`, `Autocomplete.jsx`) and a missing `leg` dependency.
 
 ## Roadmap
@@ -232,7 +234,7 @@ It covers the zero-length path case: when the same stop is the nearest to both e
 
 **Adjustable pins.** Let users drag their start/end pins when the geocoded location is inaccurate.
 
-**Drop a pin on the map.** Tap the map to set a start or end point instead of typing an address. Also costs zero geocoding requests.
+**Drop a pin on the map.** Set a start or end point from the map instead of typing an address. Also costs zero geocoding requests. A plain tap now opens nearby stops, so this would hang off that (e.g. "Start here" / "Go here" on the nearby list).
 
 **Service alerts.** Surface error flags from Downtowner's `routes_announcements.php` endpoint (detours, suspended routes, etc.).
 
