@@ -107,6 +107,19 @@
   text-overflow: ellipsis;
 }
 
+/* "Arrive around 9:42 PM". one fixed line, kept even when blank */
+.arrive {
+  font-size: 16px;
+  line-height: 1.25;
+  min-height: 20px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* right-aligned, and nudged down so the first line's capitals start exactly where the hero digits do.
    measured from instrument sans: digits start 7.2px into the 58px hero line, caps start 3.2px into a 14px line, so 4px */
 .later {

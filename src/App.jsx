@@ -5,6 +5,8 @@ import { NearbyList, StopBoard } from "./StopView";
 import { RoutesView } from "./RoutesView";
 import { RideView, TripSummary } from "./TripBuilderView";
 import { MAX_LEGS, builtTrip } from "./tripBuilder";
+import { arrivalStopIds, tripArrival } from "./tripEta";
+import { useStopEtas } from "./useStopEtas";
 import { readPrefs, visibleRouteIds, stopsOnRoutes } from "./routeList";
 import Autocomplete from "./Autocomplete";
 import Map, { ATTRIBUTION } from "./Map";
@@ -74,6 +76,14 @@ function noRouteCopy(result) {
   }
 }
 
+// "9:42 PM", that many minutes from now
+function clockIn(minutes) {
+  return new Date(Date.now() + minutes * 60000).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 // everything below the divider in a trip state. App works out which view we're in (tripView) from the existing
 // state, this just draws it. stays one component with stable elements so 10s/30s updates don't remount anything
 function ResultsCard({
@@ -89,6 +99,7 @@ function ResultsCard({
   stopsRemaining,
   legColor,
   onNearby,
+  arrival,
 }) {
   if (view === "noRoute") {
     return (
@@ -160,6 +171,17 @@ function ResultsCard({
               </span>
             </>
           )}
+        </div>
+
+        {/* always there (blank until we know), so nothing jumps when the times come in */}
+        <div className={card.arrive}>
+          {[
+            arrival.alight !== null && `~${arrival.alight} min to your stop`,
+            arrival.arrive !== null && `arrive around ${clockIn(arrival.arrive)}`,
+          ]
+            .filter(Boolean)
+            .join(" · ")
+            .replace(/^a/, "A") || "\u00a0"}
         </div>
 
         <div className={card.actions}>
@@ -262,6 +284,13 @@ function ResultsCard({
           </div>
         </div>
       )}
+
+      {/* when you'll be at your destination. always there (blank until we know), so nothing jumps */}
+      <div className={card.arrive}>
+        {arrival.arrive !== null
+          ? `Arrive around ${clockIn(arrival.arrive)}`
+          : "\u00a0"}
+      </div>
 
       <div className={card.actions}>
         {/* never hidden, just disabled until the bus is 4 or fewer stops away */}
@@ -667,6 +696,33 @@ function App() {
     tripView !== null && tripView !== "noRoute" && tripView !== "walk";
   const isTransfer = inBusTrip && !boardedBusId && currentLeg > 0; // off one bus, waiting for the next at the same stop
   const legColor = leg ? routeColor(leg.route.color, darkMode) : null; // same color the map uses for this route
+
+  // ---- when you'll arrive ----
+  // arrival times at every stop left in the trip. the stop the trip view already polls (etaStopId) comes from boardEtas,
+  // so the card's "3 min" and the arrival time are always talking about the same bus
+  const arrivalStops = inBusTrip
+    ? arrivalStopIds(tripResult.legs, currentLeg, Boolean(boardedBusId))
+    : [];
+  const otherStopEtas = useStopEtas(
+    arrivalStops.filter((id) => id !== etaStopId),
+  );
+  const arrival = useMemo(() => {
+    if (!inBusTrip) return { alight: null, arrive: null };
+    const etasByStop = { [etaStopId]: etasLoaded ? boardEtas : [] };
+    for (const [id, answer] of Object.entries(otherStopEtas))
+      etasByStop[id] = answer.etas;
+    const last = tripResult.legs[tripResult.legs.length - 1].alightStop;
+    const end = tripResult.endCoords;
+    return tripArrival({
+      legs: tripResult.legs,
+      legIndex: currentLeg,
+      boardedBusId,
+      etasByStop,
+      endWalkMinutes: Math.round(
+        getDistance(last.lat, last.lon, end.lat, end.lon) / 80,
+      ), // planTrip's walking pace
+    });
+  }, [inBusTrip, tripResult, currentLeg, boardedBusId, etaStopId, etasLoaded, boardEtas, otherStopEtas]);
 
   // ---- routes menu: what the map shows outside a trip ----
   const idleRouteIds = useMemo(
@@ -1253,6 +1309,7 @@ function App() {
                   onDone={resetTrip} // final leg: trip's over, back to search
                   stopsRemaining={stopsRemaining}
                   legColor={legColor} // route color, lightened in dark theme
+                  arrival={arrival} // minutes until you get off / arrive, null where unknown
                   onNearby={() =>
                     startCoords &&
                     openNearby("start", {
