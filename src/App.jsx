@@ -968,6 +968,7 @@ function App() {
         <Map
           tripResult={tripResult}
           routes={runningRoutes} // same "running" as the planner, so the map shows the routes that actually have buses
+          stops={stops} // for drawing just the stretch of a route your trip rides
           darkMode={darkMode}
           buses={buses}
           idleRouteIds={idleRouteIds} // the routes menu's choice (running routes by default)

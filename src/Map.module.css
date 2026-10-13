@@ -36,6 +36,25 @@
   border-bottom: 8px solid var(--c);
 }
 
+/* ---------- direction arrows ---------- */
+
+/* a chevron sitting on a 7px route line, in the color of the line's casing (white in light, near-black in dark) */
+.arrow {
+  display: block;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+:global([data-theme='dark']) .arrow {
+  stroke: #0b0d11;
+}
+
 /* ---------- trip stops (board / transfer / get off) ---------- */
 
 .stop {

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet' // for L.divIcon. every marker is plain html now (styled in Map.module.css), no more png pins
 import { routeColor } from './routeColor'
+import { pathPoints, legPath, arrowsAlong } from './routePath'
 import styles from './Map.module.css'
 
 // reduce motion setting: turn off leaflet's own zoom/fade animations too. they're only read when the map is
@@ -24,6 +25,15 @@ function makeBusIcon(heading, color) { // circle in the route color with a littl
     iconSize: [32, 32], // 26px circle + 3px border each side
     iconAnchor: [16, 16], // anchored at the center
     popupAnchor: [0, -17],
+  }))
+}
+
+function makeArrowIcon(angle) { // small chevron on a route line, pointing the way the bus drives. colored in css, to match the line's casing
+  return cachedIcon(`arrow|${angle}`, () => L.divIcon({
+    className: styles.markerReset,
+    html: `<svg class="${styles.arrow}" viewBox="0 0 12 12" style="transform: rotate(${angle}deg)"><path d="M3 8 L6 4.5 L9 8" /></svg>`,
+    iconSize: [14, 14], // the chevron is 7px wide, same as the line it sits on
+    iconAnchor: [7, 7],
   }))
 }
 
@@ -159,6 +169,26 @@ function FitView({ points, fitKey, sheetRef }) {
   return null
 }
 
+const ARROW_SPACING = 90 // screen pixels between direction arrows
+
+// direction arrows along a line. points = [[lat, lon], ...] in the order the bus drives it.
+// spaced in screen pixels, so they're worked out again whenever the zoom changes (panning doesn't move them)
+function RouteArrows({ points }) {
+  const map = useMap()
+  const [zoom, setZoom] = useState(() => map.getZoom())
+  useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
+  const arrows = useMemo(() => {
+    const xy = points.map(point => { const p = map.project(point, zoom); return [p.x, p.y] })
+    return arrowsAlong(xy, ARROW_SPACING).map(arrow => ({
+      position: map.unproject([arrow.x, arrow.y], zoom),
+      angle: Math.round(arrow.angle / 5) * 5 % 360, // nearest 5 degrees, so the icon cache stays small
+    }))
+  }, [map, points, zoom])
+  return arrows.map((arrow, i) => (
+    <Marker key={i} position={arrow.position} icon={makeArrowIcon(arrow.angle)} interactive={false} zIndexOffset={-10000} /> // under buses and stops
+  ))
+}
+
 // tripResult can be:
     // null = nothing searched yet
     // {success: false, message: ...} = search failed
@@ -169,7 +199,8 @@ function FitView({ points, fitKey, sheetRef }) {
 // stopMarkers: stops the stop view is showing, as { id, lat, lon, selected }. tapping one calls onStopTap(id)
 // fitPoints/fitKey: [lat, lon]s to move the map to, whenever fitKey changes (see FitView)
 // tappedSpot: where you tapped for nearby stops, or null. onMapTap: null while a tap shouldn't do anything (during a bus trip)
-function Map( { tripResult, routes, darkMode, buses, idleRouteIds, focusRouteId = null, stopDots = [], stopMarkers = [], tappedSpot, onMapTap, onStopTap, fitPoints = [], fitKey, sheetRef }) {
+// stops: every stop, for working out the stretch of each route a trip rides
+function Map( { tripResult, routes, stops = [], darkMode, buses, idleRouteIds, focusRouteId = null, stopDots = [], stopMarkers = [], tappedSpot, onMapTap, onStopTap, fitPoints = [], fitKey, sheetRef }) {
 
   // we use a Set because lookup is o(1), we don't have any duplicates, and it makes sense to key our routes by insertion order
   const tripRouteIds = new Set(tripResult?.legs?.map(leg => leg.route.id)) 
@@ -206,6 +237,21 @@ function Map( { tripResult, routes, darkMode, buses, idleRouteIds, focusRouteId 
   const legs = tripResult?.success ? tripResult.legs ?? [] : [] // walkOnly has no legs
   const colorOf = (route) => routeColor(route?.color, darkMode) // api color in light, lightened in dark (see routeColor.js)
 
+  // the lines that get direction arrows, as { key, route, points }. in a trip: the stretch of each route you actually ride
+  // (the rest of its loop is drawn faint), or the whole loop when that stretch can't be worked out (see legPath).
+  // outside a trip: the route picked in the routes menu
+  const tripKey = legs.map(leg => `${leg.route.id}:${leg.boardStop.id}-${leg.alightStop.id}`).join('|')
+  const focusPath = focusing ? routesById[focusRouteId]?.path : null
+  const arrowLines = useMemo(() => {
+    if (focusPath) return [{ key: `focus-${focusRouteId}`, route: routesById[focusRouteId], points: pathPoints(focusPath), whole: true }]
+    return legs.map((leg, i) => {
+      const part = legPath(leg.route, leg.boardStop, leg.alightStop, stops)
+      return { key: `leg-${i}`, route: leg.route, points: part ?? pathPoints(leg.route.path ?? []), whole: !part }
+    })
+  }, [tripKey, focusPath, stops.length]) // eslint-disable-line react-hooks/exhaustive-deps -- legs and routesById are new every render; the keys say when they really changed
+  const partRouteIds = new Set(arrowLines.filter(line => !line.whole).map(line => line.route.id)) // routes whose loop gets drawn faint
+  const wholeOnly = routeId => !partRouteIds.has(routeId) || arrowLines.some(line => line.whole && line.route.id === routeId) // a leg needs the whole loop: don't fade it
+
   return ( //anytime we want to do anything within the map instance, we have to perform that within <MapContainer>, since it uses React Context to give its children access to the map instance
     // fills its wrapper in App, which never changes size. no +/- buttons (pinch/scroll/double-tap still zoom) and no built-in attribution (see ATTRIBUTION)
     <MapContainer center={[41.3116, -72.9271]} zoom={15} zoomControl={false} attributionControl={false} zoomAnimation={!reducedMotion} fadeAnimation={!reducedMotion} markerZoomAnimation={!reducedMotion} style={{ height: '100%', width: '100%' }}>
@@ -228,8 +274,8 @@ function Map( { tripResult, routes, darkMode, buses, idleRouteIds, focusRouteId 
             key={`casing-${route.id}`} // again, dynamically allocated; needs keys to track between renders
             positions={pairUp(route.path)} 
             pathOptions={darkMode
-              ? { color: '#0B0D11', opacity: faded(route.id) ? 0 : 0.7, weight: 9 }
-              : { color: '#FFFFFF', opacity: faded(route.id) ? 0 : 0.85, weight: 9 }}
+              ? { color: '#0B0D11', opacity: faded(route.id) || !wholeOnly(route.id) ? 0 : 0.7, weight: 9 }
+              : { color: '#FFFFFF', opacity: faded(route.id) || !wholeOnly(route.id) ? 0 : 0.85, weight: 9 }}
             interactive={false} // lines never eat taps meant for the map
           />
         ))}
@@ -237,9 +283,25 @@ function Map( { tripResult, routes, darkMode, buses, idleRouteIds, focusRouteId 
           <Polyline
             key={route.id}
             positions={pairUp(route.path)} 
-            pathOptions={{ color: colorOf(route), opacity: faded(route.id) ? 0.22 : 1, weight: 5 }} // learned an important lesson after debugging: ' is not the same as ` 
+            pathOptions={{ color: colorOf(route), opacity: faded(route.id) ? 0.22 : wholeOnly(route.id) ? 1 : 0.3, weight: 5 }} // learned an important lesson after debugging: ' is not the same as ` 
             interactive={false}
           />
+        ))}
+
+        {/* the lines with direction arrows, a little thicker so the arrows fit: the part of each route your trip rides, or the route picked in the menu */}
+        {arrowLines.map(line => (
+          <Polyline
+            key={`${line.key}-casing`}
+            positions={line.points}
+            pathOptions={{ color: darkMode ? '#0B0D11' : '#FFFFFF', opacity: darkMode ? 0.7 : 0.85, weight: 11 }}
+            interactive={false}
+          />
+        ))}
+        {arrowLines.map(line => (
+          <Polyline key={line.key} positions={line.points} pathOptions={{ color: colorOf(line.route), opacity: 1, weight: 7 }} interactive={false} />
+        ))}
+        {arrowLines.map(line => (
+          <RouteArrows key={`${line.key}-arrows`} points={line.points} />
         ))}
 
         {busesToDraw.map(bus => {
